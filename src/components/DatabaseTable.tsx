@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Edit } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -179,20 +178,16 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
   };
 
   return (
-    <div className="mt-6">
+    <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Database Preview</h2>
         <div className="flex gap-4">
           <button 
             onClick={handleDeleteSelected}
             disabled={selectedRows.length === 0}
-            className="bg-red-500 text-white px-3 py-2 rounded flex items-center gap-2 disabled:opacity-50"
+            className="bg-[#ea384c] text-white px-3 py-2 rounded flex items-center gap-2 disabled:opacity-50"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18"></path>
-              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-            </svg>
+            <Trash2 size={16} />
             Delete All
           </button>
           
@@ -210,58 +205,60 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       </div>
       
       <div className="rounded-md border overflow-hidden">
-        <Table>
-          <TableHeader className="bg-kpmg-blue text-white">
-            <TableRow>
-              <TableHead className="w-10 text-white">
-                <Checkbox 
-                  checked={selectedRows.length === data.length && data.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-              <TableHead className="text-white">Actions</TableHead>
-              {displayColumns.map((column) => (
-                <TableHead key={column.key} className="text-white">
-                  {column.name}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.length === 0 ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-kpmg-blue text-white">
               <TableRow>
-                <TableCell colSpan={displayColumns.length + 2} className="text-center py-4">
-                  No data available
-                </TableCell>
+                <TableHead className="w-10 text-white">
+                  <Checkbox 
+                    checked={selectedRows.length === data.length && data.length > 0}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
+                <TableHead className="text-white w-20">Actions</TableHead>
+                {displayColumns.map((column) => (
+                  <TableHead key={column.key} className="text-white whitespace-nowrap">
+                    {column.name}
+                  </TableHead>
+                ))}
               </TableRow>
-            ) : (
-              data.map((row) => (
-                <TableRow key={row.id} className="hover:bg-gray-50">
-                  <TableCell>
-                    <Checkbox 
-                      checked={selectedRows.includes(row.id)}
-                      onCheckedChange={() => handleRowSelect(row.id)}
-                    />
+            </TableHeader>
+            <TableBody>
+              {data.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={displayColumns.length + 2} className="text-center py-4">
+                    No data available
                   </TableCell>
-                  <TableCell>
-                    <button 
-                      onClick={() => handleEditRow(row)}
-                      className="p-1 rounded-md hover:bg-gray-200 transition-colors"
-                      title="Edit row"
-                    >
-                      <Edit size={16} />
-                    </button>
-                  </TableCell>
-                  {displayColumns.map((column) => (
-                    <TableCell key={`${row.id}-${column.key}`}>
-                      {row[column.key as keyof TableData]}
-                    </TableCell>
-                  ))}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                data.map((row) => (
+                  <TableRow key={row.id} className="hover:bg-gray-50">
+                    <TableCell>
+                      <Checkbox 
+                        checked={selectedRows.includes(row.id)}
+                        onCheckedChange={() => handleRowSelect(row.id)}
+                      />
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <button 
+                        onClick={() => handleEditRow(row)}
+                        className="p-1 rounded-md hover:bg-gray-200 transition-colors"
+                        title="Edit row"
+                      >
+                        <Edit size={16} />
+                      </button>
+                    </TableCell>
+                    {displayColumns.map((column) => (
+                      <TableCell key={`${row.id}-${column.key}`} className="whitespace-nowrap">
+                        {row[column.key as keyof TableData]}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {editingRow && (
