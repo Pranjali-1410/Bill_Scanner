@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 221 100% 26%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -22,33 +23,17 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 266 77% 23%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 221 100% 26%;
 
     --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
@@ -79,14 +64,6 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 
@@ -97,5 +74,90 @@
 
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+.auth-layout {
+  @apply min-h-screen flex flex-col md:flex-row;
+}
+
+.auth-side {
+  @apply bg-kpmg-blue flex items-center justify-center md:w-1/2;
+}
+
+.auth-form-side {
+  @apply bg-kpmg-light flex items-center justify-center md:w-1/2 p-6;
+}
+
+.auth-form {
+  @apply w-full max-w-md space-y-6;
+}
+
+.auth-heading {
+  @apply text-3xl font-bold text-kpmg-purple mb-8 text-center;
+}
+
+.form-group {
+  @apply flex flex-col gap-1.5;
+}
+
+.form-label {
+  @apply text-kpmg-purple font-medium;
+}
+
+.form-input {
+  @apply border border-gray-300 rounded-md p-2.5 focus:outline-none focus:ring-2 focus:ring-kpmg-blue;
+}
+
+.primary-button {
+  @apply bg-kpmg-lightBlue hover:bg-kpmg-blue text-white font-semibold py-2.5 px-4 rounded w-full transition-colors;
+}
+
+.secondary-button {
+  @apply bg-white hover:bg-gray-100 text-kpmg-purple font-semibold py-2.5 px-4 rounded w-full transition-colors border border-kpmg-purple;
+}
+
+.text-link {
+  @apply text-kpmg-purple hover:text-kpmg-blue cursor-pointer font-medium;
+}
+
+.dashboard-layout {
+  @apply min-h-screen flex flex-col md:flex-row;
+}
+
+.sidebar {
+  @apply bg-kpmg-blue text-white w-20 flex flex-col items-center py-8 space-y-8;
+}
+
+.main-content {
+  @apply flex-1 p-6 bg-kpmg-light;
+}
+
+.dashboard-card {
+  @apply bg-white p-6 rounded-lg shadow-md;
+}
+
+.table-container {
+  @apply overflow-x-auto w-full;
+}
+
+.data-table {
+  @apply min-w-full divide-y divide-gray-200;
+}
+
+.data-table-header {
+  @apply bg-kpmg-blue text-white;
+}
+
+.data-table-cell {
+  @apply px-4 py-3;
+}
+
+.data-table-row {
+  @apply bg-opacity-80 even:bg-gray-100;
+}
+
+.data-table-row-purple {
+  @apply bg-kpmg-purple bg-opacity-80 text-white;
 }
