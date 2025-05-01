@@ -6,6 +6,7 @@ import DatabaseActions from '@/components/DatabaseActions';
 import DatabaseTable from '@/components/DatabaseTable';
 import ColumnSelector from '@/components/ColumnSelector';
 import RecentFiles from '@/components/RecentFiles';
+import FileUpload from '@/components/FileUpload';
 
 const Dashboard = () => {
   const { toast } = useToast();
@@ -60,6 +61,10 @@ const Dashboard = () => {
       <div className="main-content">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-kpmg-purple mb-2">Database Preview</h1>
+        </div>
+        
+        <div className="mb-6">
+          <FileUpload />
         </div>
         
         <div className="mb-8">

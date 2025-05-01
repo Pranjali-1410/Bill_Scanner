@@ -11,6 +11,8 @@ const Register = () => {
     department: '',
     kpmgId: '',
     location: '',
+    password: '',
+    confirmPassword: '',
   });
   const [loading, setLoading] = useState(false);
   
@@ -43,13 +45,23 @@ const Register = () => {
         });
         return;
       }
+
+      // Password matching validation
+      if (formData.password !== formData.confirmPassword) {
+        toast({
+          title: "Error",
+          description: "Passwords do not match",
+          variant: "destructive",
+        });
+        return;
+      }
       
       // For demo purposes - normally would register with a real backend
       toast({
         title: "Success",
-        description: "Registration initiated",
+        description: "Registration successful",
       });
-      navigate('/otp-verification');
+      navigate('/login');
     }, 1000);
   };
 
@@ -122,17 +134,41 @@ const Register = () => {
               />
             </div>
             
+            <div className="form-group mt-4">
+              <label htmlFor="password" className="form-label">Password</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                className="form-input"
+                value={formData.password}
+                onChange={handleChange}
+              />
+            </div>
+            
+            <div className="form-group mt-4">
+              <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                className="form-input"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+              />
+            </div>
+            
             <div className="mt-6">
               <button 
                 type="submit" 
                 className="primary-button"
                 disabled={loading}
               >
-                {loading ? 'Processing...' : 'Generate OTP'}
+                {loading ? 'Processing...' : 'Register'}
               </button>
             </div>
             <div className="mt-4 text-center">
-              <span className="text-gray-600">Already have a Account? </span>
+              <span className="text-gray-600">Already have an Account? </span>
               <Link to="/login" className="text-link">
                 Login
               </Link>

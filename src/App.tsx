@@ -14,11 +14,14 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Configure the toast autoclose duration to 3 seconds (3000ms)
+const toastDuration = 3000;
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
+      <Sonner duration={toastDuration} closeButton />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login />} />
