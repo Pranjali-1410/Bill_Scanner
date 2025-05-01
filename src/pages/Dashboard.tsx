@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import {
   Settings,
   Search,
   FileText,
+  LogOut,
 } from 'lucide-react';
 import DatabaseTable from '@/components/DatabaseTable';
 import RecentFiles from '@/components/RecentFiles';
@@ -18,6 +20,7 @@ import FileUpload from '@/components/FileUpload';
 
 const Dashboard = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const userName = "PRANJALI YADAV";
   const [activeTab, setActiveTab] = useState("database");
 
@@ -63,6 +66,19 @@ const Dashboard = () => {
     }
   };
 
+  const handleLogout = () => {
+    // Show toast notification
+    toast({
+      title: "Logging out",
+      description: "You have been successfully logged out",
+    });
+    
+    // Navigate to login page after a brief delay
+    setTimeout(() => {
+      navigate('/login');
+    }, 1000);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -74,9 +90,13 @@ const Dashboard = () => {
           </div>
           <div className="flex items-center">
             <div className="mr-4">{userName}</div>
-            <div className="bg-white text-kpmg-blue font-bold py-1 px-4 rounded">
+            <button 
+              onClick={handleLogout}
+              className="bg-white text-kpmg-blue font-bold py-1 px-4 rounded flex items-center hover:bg-gray-100 transition-colors"
+            >
+              <LogOut size={16} className="mr-1" />
               Logout
-            </div>
+            </button>
           </div>
         </div>
       </header>
