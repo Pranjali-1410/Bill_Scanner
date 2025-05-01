@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
-import KPMGLogo from '@/components/KPMGLogo';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -11,8 +10,8 @@ const Register = () => {
     department: '',
     kpmgId: '',
     location: '',
+    email: '',
     password: '',
-    confirmPassword: '',
   });
   const [loading, setLoading] = useState(false);
   
@@ -45,16 +44,6 @@ const Register = () => {
         });
         return;
       }
-
-      // Password matching validation
-      if (formData.password !== formData.confirmPassword) {
-        toast({
-          title: "Error",
-          description: "Passwords do not match",
-          variant: "destructive",
-        });
-        return;
-      }
       
       // For demo purposes - normally would register with a real backend
       toast({
@@ -66,114 +55,126 @@ const Register = () => {
   };
 
   return (
-    <div className="auth-layout">
-      <div className="auth-side">
-        <KPMGLogo />
-      </div>
-      <div className="auth-form-side">
-        <div className="auth-form">
-          <h1 className="auth-heading">Register</h1>
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="name" className="form-label">Name</label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                className="form-input"
-                value={formData.name}
-                onChange={handleChange}
-              />
+    <div className="min-h-screen bg-kpmg-blue flex items-center justify-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 w-full max-w-5xl">
+        <div className="flex items-center justify-center p-8">
+          <div className="w-full max-w-xs">
+            <div className="flex justify-center">
+              <div className="grid grid-cols-2 gap-1">
+                <div className="w-14 h-14 border-2 border-white"></div>
+                <div className="w-14 h-14 border-2 border-white"></div>
+                <div className="w-14 h-14 border-2 border-white"></div>
+                <div className="w-14 h-14 border-2 border-white"></div>
+              </div>
             </div>
-            
-            <div className="form-group mt-4">
-              <label htmlFor="designation" className="form-label">Designation</label>
-              <input
-                id="designation"
-                name="designation"
-                type="text"
-                className="form-input"
-                value={formData.designation}
-                onChange={handleChange}
-              />
-            </div>
-            
-            <div className="form-group mt-4">
-              <label htmlFor="department" className="form-label">Department</label>
-              <input
-                id="department"
-                name="department"
-                type="text"
-                className="form-input"
-                value={formData.department}
-                onChange={handleChange}
-              />
-            </div>
-            
-            <div className="form-group mt-4">
-              <label htmlFor="kpmgId" className="form-label">KPMG ID</label>
-              <input
-                id="kpmgId"
-                name="kpmgId"
-                type="text"
-                className="form-input"
-                value={formData.kpmgId}
-                onChange={handleChange}
-              />
-            </div>
-            
-            <div className="form-group mt-4">
-              <label htmlFor="location" className="form-label">Location</label>
-              <input
-                id="location"
-                name="location"
-                type="text"
-                className="form-input"
-                value={formData.location}
-                onChange={handleChange}
-              />
-            </div>
-            
-            <div className="form-group mt-4">
-              <label htmlFor="password" className="form-label">Password</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                className="form-input"
-                value={formData.password}
-                onChange={handleChange}
-              />
-            </div>
-            
-            <div className="form-group mt-4">
-              <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                className="form-input"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-              />
-            </div>
-            
-            <div className="mt-6">
+            <div className="text-white text-center text-6xl font-bold mt-4">KPMG</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-8 rounded-md shadow-lg overflow-y-auto max-h-[80vh]">
+          <div className="w-full max-w-md mx-auto">
+            <h1 className="text-3xl font-bold text-kpmg-blue mb-6 text-center">Register</h1>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-gray-700 font-medium mb-1">Name</label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-kpmg-blue"
+                  value={formData.name}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="designation" className="block text-gray-700 font-medium mb-1">Designation</label>
+                <input
+                  id="designation"
+                  name="designation"
+                  type="text"
+                  className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-kpmg-blue"
+                  value={formData.designation}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="department" className="block text-gray-700 font-medium mb-1">Department</label>
+                <input
+                  id="department"
+                  name="department"
+                  type="text"
+                  className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-kpmg-blue"
+                  value={formData.department}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="kpmgId" className="block text-gray-700 font-medium mb-1">KPMG ID</label>
+                <input
+                  id="kpmgId"
+                  name="kpmgId"
+                  type="text"
+                  className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-kpmg-blue"
+                  value={formData.kpmgId}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="location" className="block text-gray-700 font-medium mb-1">Location</label>
+                <input
+                  id="location"
+                  name="location"
+                  type="text"
+                  className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-kpmg-blue"
+                  value={formData.location}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="email" className="block text-gray-700 font-medium mb-1">Email</label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-kpmg-blue"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="password" className="block text-gray-700 font-medium mb-1">Password</label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-kpmg-blue"
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+              </div>
+              
               <button 
                 type="submit" 
-                className="primary-button"
+                className="w-full bg-kpmg-blue text-white font-medium py-3 rounded-md hover:bg-opacity-90 transition-colors mt-4"
                 disabled={loading}
               >
                 {loading ? 'Processing...' : 'Register'}
               </button>
-            </div>
-            <div className="mt-4 text-center">
-              <span className="text-gray-600">Already have an Account? </span>
-              <Link to="/login" className="text-link">
-                Login
-              </Link>
-            </div>
-          </form>
+              
+              <div className="mt-4 text-center">
+                <span className="text-gray-600">Already have a Account? </span>
+                <Link to="/login" className="text-kpmg-blue hover:underline font-medium">
+                  Login
+                </Link>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>

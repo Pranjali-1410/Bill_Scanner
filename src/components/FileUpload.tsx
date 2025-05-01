@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { Upload, Scan } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const FileUpload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -82,22 +84,22 @@ const FileUpload = () => {
           </label>
         </div>
         
-        <button 
+        <Button 
           onClick={handleUpload}
           disabled={!selectedFile || isUploading}
-          className="px-4 py-2 bg-kpmg-purple text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-opacity-90 transition-colors"
+          className="bg-kpmg-blue hover:bg-kpmg-blue/90 text-white"
         >
           {isUploading ? "Uploading..." : "Upload"}
-        </button>
+        </Button>
         
-        <button 
+        <Button 
           onClick={handleScan}
           disabled={!selectedFile}
-          className="px-4 py-2 bg-green-600 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-opacity-90 transition-colors flex items-center gap-2"
+          className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
         >
           <Scan size={18} />
           <span>Scan</span>
-        </button>
+        </Button>
       </div>
     </div>
   );
