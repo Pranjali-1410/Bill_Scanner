@@ -105,51 +105,51 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* Action Tabs - Smaller size */}
-        <div className="mb-8">
+        {/* Action Tabs - Smaller size with increased bottom margin for spacing */}
+        <div className="mb-12">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid grid-cols-3 gap-4 bg-transparent p-0">
               <TabsTrigger 
                 value="database" 
                 className="data-[state=active]:bg-kpmg-blue data-[state=active]:text-white border rounded-md shadow-sm h-auto"
               >
-                <div className="p-3">
-                  <div className="flex justify-center mb-2">
-                    <Database size={24} />
+                <div className="p-2">
+                  <div className="flex justify-center mb-1">
+                    <Database size={20} />
                   </div>
-                  <h3 className="text-sm font-medium uppercase">View Database</h3>
+                  <h3 className="text-xs font-medium uppercase">View Database</h3>
                 </div>
               </TabsTrigger>
               <TabsTrigger 
                 value="upload" 
                 className="data-[state=active]:bg-kpmg-blue data-[state=active]:text-white border rounded-md shadow-sm h-auto"
               >
-                <div className="p-3">
-                  <div className="flex justify-center mb-2">
-                    <Upload size={24} />
+                <div className="p-2">
+                  <div className="flex justify-center mb-1">
+                    <Upload size={20} />
                   </div>
-                  <h3 className="text-sm font-medium uppercase">Upload Files</h3>
+                  <h3 className="text-xs font-medium uppercase">Upload Files</h3>
                 </div>
               </TabsTrigger>
               <TabsTrigger 
                 value="master" 
                 className="data-[state=active]:bg-kpmg-blue data-[state=active]:text-white border rounded-md shadow-sm h-auto"
               >
-                <div className="p-3">
-                  <div className="flex justify-center mb-2">
-                    <Settings size={24} />
+                <div className="p-2">
+                  <div className="flex justify-center mb-1">
+                    <Settings size={20} />
                   </div>
-                  <h3 className="text-sm font-medium uppercase">Master Table</h3>
+                  <h3 className="text-xs font-medium uppercase">Master Table</h3>
                 </div>
               </TabsTrigger>
             </TabsList>
             
-            {/* Tab Content with proper spacing */}
-            <TabsContent value="upload" className="mt-8">
+            {/* Tab Content with increased top margin for spacing */}
+            <TabsContent value="upload" className="mt-12">
               <FileUpload />
             </TabsContent>
             
-            <TabsContent value="database" className="mt-8">
+            <TabsContent value="database" className="mt-12">
               <div className="flex flex-col lg:flex-row gap-6">
                 <div className="w-full lg:w-3/4">
                   <div className="bg-white p-4 rounded-lg shadow-sm">
@@ -184,7 +184,7 @@ const Dashboard = () => {
               </div>
             </TabsContent>
             
-            <TabsContent value="master" className="mt-8">
+            <TabsContent value="master" className="mt-12">
               <div className="bg-white p-6 rounded-lg shadow-sm text-center">
                 <h3 className="text-xl font-medium">Master Table Coming Soon</h3>
                 <p className="text-gray-500 mt-2">This feature is under development.</p>
