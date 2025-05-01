@@ -1,8 +1,16 @@
 
 import { useState } from 'react';
-import { File, Trash2, Edit } from 'lucide-react';
+import { Edit } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import EditRowDialog from './EditRowDialog';
 import AddNewRowDialog from './AddNewRowDialog';
 
@@ -27,41 +35,41 @@ interface DatabaseTableProps {
 const initialData: TableData[] = [
   {
     id: 1,
-    fileName: "invoice_jan.pdf",
-    billDate: '14-01-2025',
+    fileName: "Invoice_KPMG_001.pdf",
+    billDate: '14-07-2025',
     totalAmount: '11,000',
     bankName: 'The Hongkong and Shanghai Banking Corporation Ltd',
     swiftCode: 'KPMG',
     upiId: 'KPMG@HSBC',
-    uploadDateTime: 'Mon, 21 Apr 2025 18:17:59 GMT',
+    uploadDateTime: 'Mon, 21 Apr 2025 18:17:50 GMT',
     invoiceDate: '13-JAN-25',
-    taxInvoiceNo: 'KPMG-HK/80090',
+    taxInvoiceNo: 'KPMG-HR/007090',
     gstNo: '06AAAFK1513H1ZV'
   },
   {
     id: 2,
-    fileName: "invoice_oct.pdf",
+    fileName: "Invoice_KPMG_002.pdf",
     billDate: '01-11-2024',
     totalAmount: '9,240',
     bankName: 'The Hongkong and Shanghai Banking Corporation Ltd',
     swiftCode: 'KPMG',
     upiId: 'KPMG@HSBC',
-    uploadDateTime: 'Mon, 21 Apr 2025 18:17:59 GMT',
+    uploadDateTime: 'Mon, 21 Apr 2025 18:17:50 GMT',
     invoiceDate: '31-OCT-24',
-    taxInvoiceNo: 'KPMG-HK/80082',
+    taxInvoiceNo: 'KPMG-HR/000082',
     gstNo: '06AAAFK1513H1ZV'
   },
   {
     id: 3,
-    fileName: "invoice_apr.pdf",
+    fileName: "Invoice_KPMG_003.pdf",
     billDate: '12-04-2024',
     totalAmount: '284,162',
     bankName: 'The Hongkong and Shanghai Banking Corporation Ltd',
     swiftCode: 'KPMG',
     upiId: 'KPMG@HSBC',
-    uploadDateTime: 'Mon, 21 Apr 2025 18:17:59 GMT',
+    uploadDateTime: 'Mon, 21 Apr 2025 18:17:50 GMT',
     invoiceDate: '12-APR-24',
-    taxInvoiceNo: 'KPMG-HK/80003',
+    taxInvoiceNo: 'KPMG-HR/000003',
     gstNo: '06AAAFK1513H1ZV'
   }
 ];
@@ -75,29 +83,20 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
 
   // Map friendly display names to actual data keys
   const columnMap: Record<string, keyof TableData> = {
-    'ID': 'id',
-    'File Name': 'fileName',
-    'Bill Date': 'billDate',
-    'Total Amount': 'totalAmount',
-    'Bank Name': 'bankName',
-    'Swift Code': 'swiftCode',
-    'UPI ID': 'upiId',
-    'Upload Date Time': 'uploadDateTime',
-    'Invoice Date': 'invoiceDate',
-    'Tax Invoice No': 'taxInvoiceNo',
-    'GST No': 'gstNo'
+    'id': 'id',
+    'fileName': 'fileName',
+    'billDate': 'billDate',
+    'totalAmount': 'totalAmount',
+    'bankName': 'bankName',
+    'swiftCode': 'swiftCode',
+    'upiId': 'upiId',
+    'uploadDateTime': 'uploadDateTime',
+    'invoiceDate': 'invoiceDate',
+    'taxInvoiceNo': 'taxInvoiceNo',
+    'gstNo': 'gstNo'
   };
 
   const displayColumns = selectedColumns.map(col => {
-    // Replace 'Page No.' with 'File Name'
-    if (col === 'Page No.') {
-      return {
-        name: 'File Name',
-        key: 'fileName'
-      };
-    }
-    
-    // For all other columns
     return {
       name: col,
       key: columnMap[col] || col.toLowerCase().replace(/\s/g, '')
@@ -180,77 +179,89 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
   };
 
   return (
-    <div className="table-container mt-6">
+    <div className="mt-6">
       <div className="flex justify-between items-center mb-4">
-        <button 
-          onClick={handleDeleteSelected}
-          disabled={selectedRows.length === 0}
-          className="bg-red-600 text-white px-4 py-2 rounded flex items-center gap-2 disabled:opacity-50"
-        >
-          <Trash2 size={18} />
-          <span>Delete Selected</span>
-        </button>
-        
-        <button 
-          onClick={() => setIsAddDialogOpen(true)}
-          className="bg-kpmg-purple text-white px-4 py-2 rounded flex items-center gap-2"
-        >
-          <span>Add New</span>
-        </button>
+        <h2 className="text-xl font-semibold">Database Preview</h2>
+        <div className="flex gap-4">
+          <button 
+            onClick={handleDeleteSelected}
+            disabled={selectedRows.length === 0}
+            className="bg-red-500 text-white px-3 py-2 rounded flex items-center gap-2 disabled:opacity-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+            </svg>
+            Delete All
+          </button>
+          
+          <button 
+            onClick={() => setIsAddDialogOpen(true)}
+            className="bg-white text-kpmg-blue border border-kpmg-blue px-3 py-2 rounded flex items-center gap-2 hover:bg-gray-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add New
+          </button>
+        </div>
       </div>
-
-      <table className="data-table">
-        <thead className="data-table-header">
-          <tr>
-            <th className="data-table-cell text-left w-10">
-              <Checkbox 
-                checked={selectedRows.length === data.length && data.length > 0}
-                onCheckedChange={handleSelectAll}
-              />
-            </th>
-            {displayColumns.map((column, index) => (
-              <th key={index} className="data-table-cell text-left">
-                {column.name}
-              </th>
-            ))}
-            <th className="data-table-cell text-left">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((row, rowIndex) => (
-            <tr 
-              key={row.id} 
-              className={rowIndex % 2 === 0 ? "data-table-row-purple" : "data-table-row"}
-            >
-              <td className="data-table-cell">
-                <Checkbox 
-                  checked={selectedRows.includes(row.id)}
-                  onCheckedChange={() => handleRowSelect(row.id)}
-                />
-              </td>
-              {displayColumns.map((column, colIndex) => (
-                <td key={`${row.id}-${colIndex}`} className="data-table-cell">
-                  {row[column.key as keyof TableData]}
-                </td>
-              ))}
-              <td className="data-table-cell">
-                <button 
-                  onClick={() => handleEditRow(row)}
-                  className="p-1 rounded-md hover:bg-gray-200 transition-colors"
-                >
-                  <Edit size={18} />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
       
-      <div className="flex justify-end mt-4">
-        <button className="bg-white border border-gray-300 text-kpmg-purple px-4 py-2 rounded flex items-center gap-2">
-          <File size={18} />
-          <span>Open File</span>
-        </button>
+      <div className="rounded-md border overflow-hidden">
+        <Table>
+          <TableHeader className="bg-kpmg-blue text-white">
+            <TableRow>
+              <TableHead className="w-10 text-white">
+                <Checkbox 
+                  checked={selectedRows.length === data.length && data.length > 0}
+                  onCheckedChange={handleSelectAll}
+                />
+              </TableHead>
+              <TableHead className="text-white">Actions</TableHead>
+              {displayColumns.map((column) => (
+                <TableHead key={column.key} className="text-white">
+                  {column.name}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={displayColumns.length + 2} className="text-center py-4">
+                  No data available
+                </TableCell>
+              </TableRow>
+            ) : (
+              data.map((row) => (
+                <TableRow key={row.id} className="hover:bg-gray-50">
+                  <TableCell>
+                    <Checkbox 
+                      checked={selectedRows.includes(row.id)}
+                      onCheckedChange={() => handleRowSelect(row.id)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <button 
+                      onClick={() => handleEditRow(row)}
+                      className="p-1 rounded-md hover:bg-gray-200 transition-colors"
+                      title="Edit row"
+                    >
+                      <Edit size={16} />
+                    </button>
+                  </TableCell>
+                  {displayColumns.map((column) => (
+                    <TableCell key={`${row.id}-${column.key}`}>
+                      {row[column.key as keyof TableData]}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       {editingRow && (

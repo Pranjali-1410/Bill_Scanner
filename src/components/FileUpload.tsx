@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Upload, Scan } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
 const FileUpload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -63,43 +62,58 @@ const FileUpload = () => {
     // Simulate scan process
     toast({ description: "Scanning file... This will connect to backend API in the future" });
   };
-  
+
   return (
-    <div className="bg-white p-4 rounded-md shadow-sm">
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex-1">
-          <input
-            type="file"
-            id="fileUpload"
-            className="hidden"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={handleFileChange}
-          />
-          <label 
-            htmlFor="fileUpload" 
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 transition-colors"
-          >
-            <Upload size={18} />
-            <span>{selectedFile ? selectedFile.name : "Choose file"}</span>
-          </label>
+    <div className="bg-white p-6 rounded-lg shadow-sm">
+      <h2 className="text-xl font-semibold mb-6">File Upload</h2>
+      
+      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center">
+        <div className="text-center">
+          <Upload className="mx-auto h-12 w-12 text-gray-400" />
+          <p className="mt-2 text-sm font-medium text-gray-700">
+            Drag and drop your files here
+          </p>
+          <p className="text-xs text-gray-500">or</p>
+          <div className="mt-4">
+            <input
+              type="file"
+              id="fileUpload"
+              className="hidden"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={handleFileChange}
+            />
+            <label
+              htmlFor="fileUpload"
+              className="inline-flex cursor-pointer px-4 py-2 bg-kpmg-blue text-white rounded-md hover:bg-kpmg-blue/90 transition-colors"
+            >
+              Browse Files
+            </label>
+            
+            {selectedFile && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-700">Selected: {selectedFile.name}</p>
+                <div className="flex gap-4 mt-2">
+                  <Button 
+                    onClick={handleUpload}
+                    disabled={isUploading}
+                    className="bg-kpmg-blue hover:bg-kpmg-blue/90 text-white"
+                  >
+                    {isUploading ? "Uploading..." : "Upload"}
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleScan}
+                    className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                  >
+                    <Scan size={18} />
+                    <span>Scan</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-4">Supported files: PDF, JPG, JPEG, PNG</p>
         </div>
-        
-        <Button 
-          onClick={handleUpload}
-          disabled={!selectedFile || isUploading}
-          className="bg-kpmg-blue hover:bg-kpmg-blue/90 text-white"
-        >
-          {isUploading ? "Uploading..." : "Upload"}
-        </Button>
-        
-        <Button 
-          onClick={handleScan}
-          disabled={!selectedFile}
-          className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-        >
-          <Scan size={18} />
-          <span>Scan</span>
-        </Button>
       </div>
     </div>
   );

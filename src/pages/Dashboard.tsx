@@ -1,43 +1,49 @@
 
 import { useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { Database, Upload, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Database,
+  Upload,
+  Settings,
+  Search,
+  FileText,
+} from 'lucide-react';
 import DatabaseTable from '@/components/DatabaseTable';
-import ColumnSelector from '@/components/ColumnSelector';
 import RecentFiles from '@/components/RecentFiles';
 import FileUpload from '@/components/FileUpload';
 
 const Dashboard = () => {
   const { toast } = useToast();
-  const userName = "PRANJALI YADAV"; // Replace with actual user data later
-  
+  const userName = "PRANJALI YADAV";
+
+  // Available column options
   const availableColumns = [
-    'id', 
-    'fileName', 
-    'billDate', 
-    'totalAmount', 
-    'bankName', 
-    'swiftCode', 
-    'upiId', 
-    'uploadDateTime', 
-    'invoiceDate', 
-    'taxInvoiceNo', 
+    'id',
+    'fileName',
+    'billDate',
+    'totalAmount',
+    'bankName',
+    'swiftCode',
+    'upiId',
+    'uploadDateTime',
+    'invoiceDate',
+    'taxInvoiceNo',
     'gstNo'
   ];
   
   // Default selected columns
   const [selectedColumns, setSelectedColumns] = useState([
-    'id', 
-    'fileName', 
-    'billDate', 
-    'totalAmount', 
-    'bankName', 
-    'swiftCode', 
-    'upiId', 
-    'uploadDateTime', 
+    'id',
+    'fileName',
+    'billDate',
+    'totalAmount',
+    'bankName',
+    'swiftCode',
+    'upiId',
+    'uploadDateTime',
     'invoiceDate'
   ]);
   
@@ -50,12 +56,19 @@ const Dashboard = () => {
   const handleColumnToggle = (column: string) => {
     if (selectedColumns.includes(column)) {
       setSelectedColumns(selectedColumns.filter(col => col !== column));
-      toast({ description: `Column "${column}" removed` });
     } else {
       setSelectedColumns([...selectedColumns, column]);
-      toast({ description: `Column "${column}" added` });
     }
   };
+
+  const DatabaseActionCard = ({ icon: Icon, title }: { icon: any, title: string }) => (
+    <div className="bg-kpmg-blue text-center py-8 px-4 rounded-lg cursor-pointer hover:bg-opacity-90 transition-colors">
+      <div className="flex justify-center mb-4">
+        <Icon size={48} color="white" />
+      </div>
+      <h3 className="text-xl font-semibold text-white uppercase">{title}</h3>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -87,10 +100,7 @@ const Dashboard = () => {
               className="pl-10 pr-4 py-2 w-full"
             />
             <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
+              <Search size={18} />
             </div>
           </div>
           <div>
@@ -104,20 +114,9 @@ const Dashboard = () => {
         
         {/* Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-kpmg-blue text-white p-6 rounded-md cursor-pointer hover:bg-opacity-90 transition-colors flex flex-col items-center justify-center">
-            <Database size={36} className="mb-4" />
-            <h3 className="text-xl font-semibold uppercase">View Database</h3>
-          </div>
-          
-          <div className="bg-kpmg-blue text-white p-6 rounded-md cursor-pointer hover:bg-opacity-90 transition-colors flex flex-col items-center justify-center">
-            <Upload size={36} className="mb-4" />
-            <h3 className="text-xl font-semibold uppercase">Upload Files</h3>
-          </div>
-          
-          <div className="bg-kpmg-blue text-white p-6 rounded-md cursor-pointer hover:bg-opacity-90 transition-colors flex flex-col items-center justify-center">
-            <Settings size={36} className="mb-4" />
-            <h3 className="text-xl font-semibold uppercase">Master Table</h3>
-          </div>
+          <DatabaseActionCard icon={Database} title="View Database" />
+          <DatabaseActionCard icon={Upload} title="Upload Files" />
+          <DatabaseActionCard icon={Settings} title="Master Table" />
         </div>
         
         {/* File Upload Section */}
@@ -128,36 +127,14 @@ const Dashboard = () => {
         {/* Main Content */}
         <div className="flex flex-col md:flex-row gap-6">
           <div className="w-full md:w-3/4">
-            <div className="bg-white p-4 rounded-md shadow-sm mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Database Preview</h2>
-                <div className="flex gap-2">
-                  <Button variant="destructive" className="bg-red-500 hover:bg-red-600 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 6h18"></path>
-                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                      <line x1="10" y1="11" x2="10" y2="17"></line>
-                      <line x1="14" y1="11" x2="14" y2="17"></line>
-                    </svg>
-                    Delete All
-                  </Button>
-                  <Button variant="outline" className="border-kpmg-blue text-kpmg-blue hover:bg-kpmg-blue hover:text-white flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Add New
-                  </Button>
-                </div>
-              </div>
+            <div className="bg-white p-4 rounded-lg shadow-sm">
               <DatabaseTable selectedColumns={selectedColumns} />
             </div>
           </div>
           
           <div className="w-full md:w-1/4 space-y-6">
             {/* Column Selector */}
-            <div className="bg-white p-4 rounded-md shadow-sm">
+            <div className="bg-white p-4 rounded-lg shadow-sm">
               <h3 className="text-lg font-semibold mb-4">Table Columns</h3>
               <div className="space-y-2">
                 {availableColumns.map((column, index) => (
