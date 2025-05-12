@@ -3,11 +3,13 @@ import { useState } from 'react';
 import { Upload, Scan } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
+import ExtractedDataDisplay from './ExtractedDataDisplay';
 
 const FileUpload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [uploadedFilePath, setUploadedFilePath] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<any | null>(null);
   const { toast } = useToast();
@@ -116,19 +118,6 @@ const FileUpload = () => {
       toast({ 
         description: "Document scanned successfully! Data extracted." 
       });
-      
-      // Send data to database (you might want to add a separate button for this)
-      // This would typically be a separate action after reviewing the data
-      /* Example for later implementation:
-      await fetch('http://localhost:5000/upload-bill', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data.results),
-      });
-      */
-      
     } catch (error) {
       console.error('Scan error:', error);
       toast({
@@ -138,6 +127,50 @@ const FileUpload = () => {
       });
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  const handleSaveToDatabase = async () => {
+    if (!extractedData) {
+      toast({
+        title: "Error",
+        description: "No data to save",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsSaving(true);
+    
+    try {
+      const response = await fetch('http://localhost:5000/upload-bill', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(extractedData),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to save to database with status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      toast({ 
+        title: "Success",
+        description: "Bill data saved to database successfully"
+      });
+      
+    } catch (error) {
+      console.error('Database save error:', error);
+      toast({
+        title: "Save Failed",
+        description: error instanceof Error ? error.message : "Error saving to database",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -195,37 +228,13 @@ const FileUpload = () => {
         </div>
       </div>
       
-      {/* Display extracted data */}
+      {/* Use the ExtractedDataDisplay component */}
       {extractedData && (
-        <div className="mt-8 border rounded-lg p-4">
-          <h3 className="text-lg font-semibold mb-4">Extracted Document Data</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <tbody className="bg-white divide-y divide-gray-200">
-                {Object.entries(extractedData)
-                  .filter(([key]) => key !== 'First 5 Customer Rows' && key !== 'Footer Block')
-                  .map(([key, value]) => (
-                    <tr key={key}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{key}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{String(value)}</td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-4">
-            <Button 
-              onClick={() => {
-                // Here you would implement saving to database
-                toast({ description: "This would save to the database in a real implementation" });
-              }}
-              className="bg-kpmg-blue hover:bg-kpmg-blue/90 text-white"
-            >
-              Save to Database
-            </Button>
-          </div>
-        </div>
+        <ExtractedDataDisplay 
+          data={extractedData}
+          onSaveToDatabase={handleSaveToDatabase}
+          isSaving={isSaving}
+        />
       )}
     </div>
   );
