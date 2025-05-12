@@ -8,8 +8,8 @@ import psycopg2
 from contextlib import closing
 
 app = Flask(__name__)
-# Enable CORS for all routes and origins
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Enable CORS for all routes and origins with additional configurations
+CORS(app, resources={r"/*": {"origins": "*", "supports_credentials": True, "expose_headers": ["Content-Type", "X-CSRFToken"]}})
 
 UPLOAD_FOLDER = './uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -36,13 +36,19 @@ DB_PORT = os.getenv('DB_PORT', '5432')
 
 # Database connection function
 def get_db_connection():
-    return psycopg2.connect(
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        host=DB_HOST,
-        port=DB_PORT
-    )
+    try:
+        conn = psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT
+        )
+        logger.info("Database connection successful")
+        return conn
+    except Exception as e:
+        logger.error(f"Database connection error: {e}")
+        raise
 
 # Try connecting to the database
 try:
@@ -88,82 +94,22 @@ except Exception as e:
     logger.error(f"Database error: {e}")
     logger.error("Please make sure PostgreSQL is running and the 'bill_db' database exists")
 
-# === OCR & Extraction Logic ===
-def process_invoice(pdf_path):
-    try:
-        # 1. Convert PDF to images
-        pages = convert_from_path(pdf_path, dpi=300)
-        cv_images = [cv2.cvtColor(np.array(p), cv2.COLOR_RGB2BGR) for p in pages]
-        invoice = cv2.vconcat(cv_images)
-
-        # 2. Preprocess
-        gray = cv2.cvtColor(invoice, cv2.COLOR_BGR2GRAY)
-        gray = cv2.bilateralFilter(gray, 9, 75, 75)
-        thresh = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 10
-        )
-
-        # 3. OCR
-        ocr_raw = pytesseract.image_to_string(thresh, lang='eng')
-        lines = [L.strip() for L in ocr_raw.splitlines() if L.strip()]
-        full_text = re.sub(r'\s+', ' ', ocr_raw)
-
-        # 4. Identify header/footer
-        ix = next((i for i, L in enumerate(lines) if 'Stand No' in L), len(lines))
-        first_5_customer = lines[:min(ix, 5)]
-        f_ix = next((i for i, L in enumerate(lines) if 'Phone:' in L), None)
-        footer_block = (lines[max(f_ix - 6, 0):f_ix + 1] if f_ix is not None else [])
-
-        # 5. Patterns
-        patterns = {
-            'Stand_No': r'Stand\s*No[:\s\-]*([A-Za-z0-9\*]+)',
-            'Street_No': r'Street\s*No.*?([A-Za-z0-9,\s]+?)\s{2,}',
-            'Stand_valuation': r'Valuation.*?(\d[\d,\.]*)',
-            'ACC_No': r'Acc\s*No.*?(\d{6,})',
-            'Route_No': r'Route\s*No.*?([A-Za-z0-9-]+)',
-            'Deposit': r'Deposit.*?(\d[\d,\.]*)',
-            'Guarantee': r'Guarantee.*?(\d[\d,\.]*)',
-            'Acc_Date': r'Acc\s*Date.*?([A-Za-z]+\s+\d{4})',
-            'Improvements': r'Improvements.*?(\d[\d,\.]*)',
-            'Payments_up_to': r'Payments\s*up to.*?([\d/]{6,10})',
-            'VAT_Reg_No': r'VAT\s*REG.*?(\d+)',
-            'Balance_B_F': r'Balance\s*B\/F.*?([-\d,\.]+)',
-            'Payments': r'Payments(?!\s*up to).*?([-\d,\.]+)',
-            'Sub_total': r'Sub\s*total.*?([-\d,\.]+)',
-            'Month_total': r'Month\s*total.*?([-\d,\.]+)',
-            'Total_due': r'Total\s*due.*?([-\d,\.]+)',
-            'Over_90': r'Over\s*90.*?([0-9,\.]+)',
-            'Ninety_days': r'90\s*Days.*?([0-9,\.]+)',
-            'Sixty_days': r'60\s*Days.*?([0-9,\.]+)',
-            'Thirty_days': r'30\s*Days.*?([0-9,\.]+)',
-            'Current': r'Current.*?([0-9,\.]+)',
-            'Due_Date': r'Due\s*Date.*?([\d\/]+)',
-            
-        }
-
-        # 6. Extract fields
-        results = {key: (re.search(rx, full_text, re.IGNORECASE | re.DOTALL).group(1).strip()
-                         if re.search(rx, full_text, re.IGNORECASE | re.DOTALL)
-                         else None)
-                   for key, rx in patterns.items()}
-
-        # Add extra results
-        results['First 5 Customer Rows'] = first_5_customer
-        results['Footer Block'] = footer_block
-
-        return {'success': True, 'results': results}
-
-    except Exception as e:
-        logger.error(f"Processing error: {e}")
-        return {'success': False, 'error': str(e)}
+# ... keep existing code (OCR & Extraction Logic and process_invoice function)
 
 # === Routes ===
 @app.route('/')
 def home():
-    return jsonify({'message': 'API is running'}), 200
+    # Add CORS headers to the response to allow cross-origin requests
+    response = jsonify({'message': 'API is running'})
+    return response, 200
 
-@app.route('/upload-bill', methods=['POST'])
+@app.route('/upload-bill', methods=['POST', 'OPTIONS'])
 def upload_bill():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = app.make_default_options_response()
+        return response
+        
     try:
         data = request.get_json()
         if not data:
@@ -215,21 +161,32 @@ def upload_bill():
         logger.error(f"Error saving bill data: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/get-all-bills', methods=['GET'])
+@app.route('/get-all-bills', methods=['GET', 'OPTIONS'])
 def get_all_bills():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = app.make_default_options_response()
+        return response
+        
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT * FROM bill_data")
                 columns = [desc[0] for desc in cursor.description]
                 results = [dict(zip(columns, row)) for row in cursor.fetchall()]
-                return jsonify({'success': True, 'data': results}), 200
+                response = jsonify({'success': True, 'data': results})
+                return response, 200
     except Exception as e:
         logger.error(f"Error fetching bills: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/upload', methods=['POST'])
+@app.route('/upload', methods=['POST', 'OPTIONS'])
 def upload_pdf():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = app.make_default_options_response()
+        return response
+        
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     file = request.files['file']
@@ -238,21 +195,28 @@ def upload_pdf():
 
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     file.save(file_path)
+    logger.info(f"File saved at {file_path}")
 
     return jsonify({'message': 'File uploaded successfully', 'filePath': file_path})
 
-@app.route('/scan', methods=['POST'])
+@app.route('/scan', methods=['POST', 'OPTIONS'])
 def scan_pdf():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = app.make_default_options_response()
+        return response
+        
     data = request.get_json()
     file_path = data.get('filePath')
 
     if not file_path or not os.path.exists(file_path):
         return jsonify({'error': 'Invalid or missing file path'}), 400
-
+        
+    logger.info(f"Scanning file: {file_path}")
     result = process_invoice(file_path)
     return jsonify(result)
 
 if __name__ == '__main__':
     print("Starting Flask server on http://localhost:5000")
     print("Make sure you have PostgreSQL running with a database named 'bill_db'")
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, host='0.0.0.0')  # Update to listen on all interfaces

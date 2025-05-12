@@ -16,7 +16,7 @@ const FileUpload = () => {
   
   // Define backend URL that works both in development and when deployed
   const BACKEND_URL = import.meta.env.PROD 
-    ? window.location.origin.replace('3000', '5000') // If in production, adjust port
+    ? (window.location.protocol + '//' + window.location.hostname + ':5000') // Use same host with port 5000
     : 'http://localhost:5000'; // Default for development
   
   const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
@@ -59,11 +59,17 @@ const FileUpload = () => {
       formData.append('file', selectedFile);
       
       console.log("Uploading to:", `${BACKEND_URL}/upload`);
-      // Send to backend
+      // Send to backend with timeout and proper error handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch(`${BACKEND_URL}/upload`, {
         method: 'POST',
         body: formData,
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`Upload failed with status: ${response.status}`);
@@ -77,11 +83,21 @@ const FileUpload = () => {
       });
     } catch (error) {
       console.error('Upload error:', error);
+      let errorMessage = "Server connection failed. ";
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage += "Request timed out after 30 seconds.";
+        } else {
+          errorMessage += error.message;
+        }
+      }
+      
+      errorMessage += " Make sure the backend server is running at " + BACKEND_URL;
+      
       toast({
         title: "Upload Failed",
-        description: error instanceof Error 
-          ? error.message 
-          : "Server error occurred. Make sure the backend is running at " + BACKEND_URL,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -102,14 +118,20 @@ const FileUpload = () => {
     setIsScanning(true);
     
     try {
-      // Send to scan endpoint
+      // Send to scan endpoint with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for scanning
+      
       const response = await fetch(`${BACKEND_URL}/scan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ filePath: uploadedFilePath }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`Scan failed with status: ${response.status}`);
@@ -128,9 +150,19 @@ const FileUpload = () => {
       });
     } catch (error) {
       console.error('Scan error:', error);
+      let errorMessage = "Scanning process failed. ";
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage += "Request timed out after 60 seconds.";
+        } else {
+          errorMessage += error.message;
+        }
+      }
+      
       toast({
         title: "Scan Failed",
-        description: error instanceof Error ? error.message : "Error processing document",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -151,19 +183,25 @@ const FileUpload = () => {
     setIsSaving(true);
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch(`${BACKEND_URL}/upload-bill`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(extractedData),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`Failed to save to database with status: ${response.status}`);
       }
       
-      const result = await response.json();
+      await response.json();
       
       toast({ 
         title: "Success",
@@ -172,9 +210,19 @@ const FileUpload = () => {
       
     } catch (error) {
       console.error('Database save error:', error);
+      let errorMessage = "Database save failed. ";
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage += "Request timed out after 30 seconds.";
+        } else {
+          errorMessage += error.message;
+        }
+      }
+      
       toast({
         title: "Save Failed",
-        description: error instanceof Error ? error.message : "Error saving to database",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
