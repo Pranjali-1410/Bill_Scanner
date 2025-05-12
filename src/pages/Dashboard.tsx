@@ -24,7 +24,7 @@ const Dashboard = () => {
   const userName = "PRANJALI YADAV";
   const [activeTab, setActiveTab] = useState("database");
 
-  // Available column options
+  // Available column options - expanded with Python backend fields
   const availableColumns = [
     'id',
     'fileName',
@@ -36,7 +36,30 @@ const Dashboard = () => {
     'uploadDateTime',
     'invoiceDate',
     'taxInvoiceNo',
-    'gstNo'
+    'gstNo',
+    // Python backend fields
+    'Stand No',
+    'Street No',
+    'Stand valuation',
+    'ACC No',
+    'Route No',
+    'Deposit',
+    'Guarantee',
+    'Acc Date',
+    'Improvements',
+    'Payments up to',
+    'VAT Reg No',
+    'Balance B/F',
+    'Payments',
+    'Sub total',
+    'Month total',
+    'Total due',
+    'Over 90',
+    '90 days',
+    '60 days',
+    '30 days',
+    'Current',
+    'Due Date'
   ];
   
   // Default selected columns

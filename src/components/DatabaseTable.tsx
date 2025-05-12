@@ -13,6 +13,7 @@ import {
 import EditRowDialog from './EditRowDialog';
 import AddNewRowDialog from './AddNewRowDialog';
 
+// Expanded TableData to match possible backend fields
 interface TableData {
   id: number;
   fileName: string;
@@ -25,6 +26,29 @@ interface TableData {
   invoiceDate: string;
   taxInvoiceNo: string;
   gstNo: string;
+  // Fields from Python backend
+  Stand_No?: string;
+  Street_No?: string;
+  Stand_valuation?: string;
+  ACC_No?: string;
+  Route_No?: string;
+  Deposit?: string;
+  Guarantee?: string;
+  Acc_Date?: string;
+  Improvements?: string;
+  Payments_up_to?: string;
+  VAT_Reg_No?: string;
+  Balance_B_F?: string;
+  Payments?: string;
+  Sub_total?: string;
+  Month_total?: string;
+  Total_due?: string;
+  Over_90?: string;
+  Ninety_days?: string;
+  Sixty_days?: string;
+  Thirty_days?: string;
+  Current?: string;
+  Due_Date?: string;
 }
 
 interface DatabaseTableProps {
@@ -80,7 +104,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  // Map friendly display names to actual data keys
+  // Enhanced column map to include backend fields
   const columnMap: Record<string, keyof TableData> = {
     'id': 'id',
     'fileName': 'fileName',
@@ -92,7 +116,30 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     'uploadDateTime': 'uploadDateTime',
     'invoiceDate': 'invoiceDate',
     'taxInvoiceNo': 'taxInvoiceNo',
-    'gstNo': 'gstNo'
+    'gstNo': 'gstNo',
+    // Backend fields
+    'Stand No': 'Stand_No',
+    'Street No': 'Street_No',
+    'Stand valuation': 'Stand_valuation',
+    'ACC No': 'ACC_No',
+    'Route No': 'Route_No',
+    'Deposit': 'Deposit',
+    'Guarantee': 'Guarantee',
+    'Acc Date': 'Acc_Date',
+    'Improvements': 'Improvements',
+    'Payments up to': 'Payments_up_to',
+    'VAT Reg No': 'VAT_Reg_No',
+    'Balance B/F': 'Balance_B_F',
+    'Payments': 'Payments',
+    'Sub total': 'Sub_total',
+    'Month total': 'Month_total',
+    'Total due': 'Total_due',
+    'Over 90': 'Over_90',
+    '90 days': 'Ninety_days',
+    '60 days': 'Sixty_days',
+    '30 days': 'Thirty_days',
+    'Current': 'Current',
+    'Due Date': 'Due_Date'
   };
 
   const displayColumns = selectedColumns.map(col => {
@@ -177,6 +224,36 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     });
   };
 
+  // Add function to fetch data from backend (to be implemented)
+  const fetchDataFromBackend = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/get-all-bills'); // This endpoint would need to be added to your Python backend
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data: ${response.status}`);
+      }
+      const fetchedData = await response.json();
+      
+      // Convert backend data format to TableData format
+      const formattedData = fetchedData.map((item: any, index: number) => ({
+        id: index + 1,
+        fileName: `Bill_${item.ACC_No || index}.pdf`,
+        ...item
+      }));
+      
+      setData(formattedData);
+      toast({
+        description: "Data loaded from database",
+      });
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load data from database",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -200,6 +277,17 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
             Add New
+          </button>
+          
+          <button 
+            onClick={fetchDataFromBackend}
+            className="bg-kpmg-blue text-white px-3 py-2 rounded flex items-center gap-2 hover:bg-kpmg-blue/90"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.24"></path>
+              <path d="M21 3v9h-9"></path>
+            </svg>
+            Refresh Data
           </button>
         </div>
       </div>

@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 const FileUpload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [uploadedFilePath, setUploadedFilePath] = useState<string | null>(null);
+  const [extractedData, setExtractedData] = useState<any | null>(null);
   const { toast } = useToast();
   
   const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
@@ -27,6 +30,8 @@ const FileUpload = () => {
     }
     
     setSelectedFile(file);
+    setUploadedFilePath(null);
+    setExtractedData(null);
   };
   
   const handleUpload = async () => {
@@ -41,16 +46,41 @@ const FileUpload = () => {
     
     setIsUploading(true);
     
-    // Simulate upload process
-    setTimeout(() => {
+    try {
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      
+      // Send to backend
+      const response = await fetch('http://localhost:5000/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setUploadedFilePath(data.filePath);
+      
+      toast({ 
+        description: `File ${selectedFile.name} uploaded successfully` 
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : "Server error occurred",
+        variant: "destructive",
+      });
+    } finally {
       setIsUploading(false);
-      toast({ description: `File ${selectedFile.name} uploaded successfully` });
-      setSelectedFile(null);
-    }, 1500);
+    }
   };
   
-  const handleScan = () => {
-    if (!selectedFile) {
+  const handleScan = async () => {
+    if (!uploadedFilePath) {
       toast({
         title: "Error",
         description: "Please upload a file first",
@@ -59,8 +89,56 @@ const FileUpload = () => {
       return;
     }
     
-    // Simulate scan process
-    toast({ description: "Scanning file... This will connect to backend API in the future" });
+    setIsScanning(true);
+    
+    try {
+      // Send to scan endpoint
+      const response = await fetch('http://localhost:5000/scan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ filePath: uploadedFilePath }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Scan failed with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || "Scanning failed");
+      }
+      
+      setExtractedData(data.results);
+      
+      toast({ 
+        description: "Document scanned successfully! Data extracted." 
+      });
+      
+      // Send data to database (you might want to add a separate button for this)
+      // This would typically be a separate action after reviewing the data
+      /* Example for later implementation:
+      await fetch('http://localhost:5000/upload-bill', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data.results),
+      });
+      */
+      
+    } catch (error) {
+      console.error('Scan error:', error);
+      toast({
+        title: "Scan Failed",
+        description: error instanceof Error ? error.message : "Error processing document",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   return (
@@ -103,10 +181,11 @@ const FileUpload = () => {
                   
                   <Button 
                     onClick={handleScan}
+                    disabled={isScanning || !uploadedFilePath}
                     className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
                   >
                     <Scan size={18} />
-                    <span>Scan</span>
+                    <span>{isScanning ? "Scanning..." : "Scan"}</span>
                   </Button>
                 </div>
               </div>
@@ -115,6 +194,39 @@ const FileUpload = () => {
           <p className="text-xs text-gray-500 mt-4">Supported files: PDF, JPG, JPEG, PNG</p>
         </div>
       </div>
+      
+      {/* Display extracted data */}
+      {extractedData && (
+        <div className="mt-8 border rounded-lg p-4">
+          <h3 className="text-lg font-semibold mb-4">Extracted Document Data</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-200">
+                {Object.entries(extractedData)
+                  .filter(([key]) => key !== 'First 5 Customer Rows' && key !== 'Footer Block')
+                  .map(([key, value]) => (
+                    <tr key={key}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{key}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{String(value)}</td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4">
+            <Button 
+              onClick={() => {
+                // Here you would implement saving to database
+                toast({ description: "This would save to the database in a real implementation" });
+              }}
+              className="bg-kpmg-blue hover:bg-kpmg-blue/90 text-white"
+            >
+              Save to Database
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
