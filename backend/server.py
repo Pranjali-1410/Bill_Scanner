@@ -114,6 +114,8 @@ def upload_bill():
         data = request.get_json()
         if not data:
             return jsonify({'error': 'No data provided'}), 400
+        
+        logger.info(f"Received data: {data}")
             
         # Extract account number to use as primary key
         acc_no = data.get('ACC_No')
@@ -142,6 +144,9 @@ def upload_bill():
         # Get values from the incoming data
         values = [data.get(field) for field in fields]
         
+        logger.info(f"Fields: {fields}")
+        logger.info(f"Values: {values}")
+        
         # Insert into database
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
@@ -152,8 +157,10 @@ def upload_bill():
                     DO UPDATE SET 
                     {', '.join([f"{field} = EXCLUDED.{field}" for field in fields if field != 'ACC_No'])};
                 """
+                logger.info(f"Executing query: {query}")
                 cursor.execute(query, values)
                 conn.commit()
+                logger.info("Data inserted/updated successfully")
                 
         return jsonify({'message': 'Bill data saved to database successfully'}), 200
         
@@ -173,7 +180,23 @@ def get_all_bills():
             with conn.cursor() as cursor:
                 cursor.execute("SELECT * FROM bill_data")
                 columns = [desc[0] for desc in cursor.description]
-                results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                
+                # Convert column names to title case for better readability
+                formatted_columns = [col for col in columns]
+                
+                logger.info(f"Query columns: {formatted_columns}")
+                
+                # Fetch all rows and convert to dictionaries with proper column names
+                rows = cursor.fetchall()
+                results = []
+                
+                for row in rows:
+                    # Create a dictionary that maps column names to row values
+                    row_dict = dict(zip(formatted_columns, row))
+                    results.append(row_dict)
+                
+                logger.info(f"Fetched {len(results)} records from database")
+                
                 response = jsonify({'success': True, 'data': results})
                 return response, 200
     except Exception as e:

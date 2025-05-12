@@ -5,7 +5,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import ExtractedDataDisplay from './ExtractedDataDisplay';
 
-const FileUpload = () => {
+interface FileUploadProps {
+  onDataSaved?: () => void;
+}
+
+const FileUpload = ({ onDataSaved }: FileUploadProps) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -183,6 +187,7 @@ const FileUpload = () => {
     setIsSaving(true);
     
     try {
+      console.log("Saving data to database:", extractedData);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
@@ -198,7 +203,8 @@ const FileUpload = () => {
       clearTimeout(timeoutId);
       
       if (!response.ok) {
-        throw new Error(`Failed to save to database with status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to save to database with status: ${response.status}. Details: ${errorText}`);
       }
       
       await response.json();
@@ -207,6 +213,13 @@ const FileUpload = () => {
         title: "Success",
         description: "Bill data saved to database successfully"
       });
+
+      // After successful save, switch to database tab if callback is provided
+      if (onDataSaved) {
+        setTimeout(() => {
+          onDataSaved();
+        }, 1500); // Short delay for user to see success message
+      }
       
     } catch (error) {
       console.error('Database save error:', error);

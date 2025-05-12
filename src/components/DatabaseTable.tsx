@@ -14,56 +14,12 @@ import EditRowDialog from './EditRowDialog';
 import AddNewRowDialog from './AddNewRowDialog';
 import { TableData } from '@/types/database';
 
-// Remove the local TableData interface and use the imported one
-
 interface DatabaseTableProps {
   selectedColumns: string[];
 }
 
-const initialData: TableData[] = [
-  {
-    id: 1,
-    fileName: "Invoice_KPMG_001.pdf",
-    billDate: '14-07-2025',
-    totalAmount: '11,000',
-    bankName: 'The Hongkong and Shanghai Banking Corporation Ltd',
-    swiftCode: 'KPMG',
-    upiId: 'KPMG@HSBC',
-    uploadDateTime: 'Mon, 21 Apr 2025 18:17:50 GMT',
-    invoiceDate: '13-JAN-25',
-    taxInvoiceNo: 'KPMG-HR/007090',
-    gstNo: '06AAAFK1513H1ZV'
-  },
-  {
-    id: 2,
-    fileName: "Invoice_KPMG_002.pdf",
-    billDate: '01-11-2024',
-    totalAmount: '9,240',
-    bankName: 'The Hongkong and Shanghai Banking Corporation Ltd',
-    swiftCode: 'KPMG',
-    upiId: 'KPMG@HSBC',
-    uploadDateTime: 'Mon, 21 Apr 2025 18:17:50 GMT',
-    invoiceDate: '31-OCT-24',
-    taxInvoiceNo: 'KPMG-HR/000082',
-    gstNo: '06AAAFK1513H1ZV'
-  },
-  {
-    id: 3,
-    fileName: "Invoice_KPMG_003.pdf",
-    billDate: '12-04-2024',
-    totalAmount: '284,162',
-    bankName: 'The Hongkong and Shanghai Banking Corporation Ltd',
-    swiftCode: 'KPMG',
-    upiId: 'KPMG@HSBC',
-    uploadDateTime: 'Mon, 21 Apr 2025 18:17:50 GMT',
-    invoiceDate: '12-APR-24',
-    taxInvoiceNo: 'KPMG-HR/000003',
-    gstNo: '06AAAFK1513H1ZV'
-  }
-];
-
 const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
-  const [data, setData] = useState<TableData[]>(initialData);
+  const [data, setData] = useState<TableData[]>([]);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [editingRow, setEditingRow] = useState<TableData | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -72,7 +28,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
   
   // Define backend URL that works both in development and when deployed
   const BACKEND_URL = import.meta.env.PROD 
-    ? window.location.origin.replace('3000', '5000') // If in production, adjust port
+    ? (window.location.protocol + '//' + window.location.hostname + ':5000') // Use same host with port 5000
     : 'http://localhost:5000'; // Default for development
 
   // Enhanced column map to include backend fields
@@ -200,15 +156,24 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     });
   };
 
-  // Add function to fetch data from backend
+  // Updated function to fetch data from backend with better error handling
   const fetchDataFromBackend = async () => {
     setIsLoading(true);
     try {
       console.log("Fetching data from:", `${BACKEND_URL}/get-all-bills`);
-      const response = await fetch(`${BACKEND_URL}/get-all-bills`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      const response = await fetch(`${BACKEND_URL}/get-all-bills`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.status}`);
       }
+      
       const result = await response.json();
       
       if (!result.success) {
@@ -216,20 +181,59 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       }
       
       // Convert backend data format to TableData format
-      const formattedData = result.data.map((item: any, index: number) => ({
-        id: index + 1,
-        fileName: `Bill_${item.acc_no || index}.pdf`,
-        ...item
-      }));
-      
-      if (formattedData.length > 0) {
-        setData(formattedData);
-        toast({
-          description: `${formattedData.length} records loaded from database`,
+      // Ensure proper field name formatting from snake_case to camelCase for display
+      if (result.data && Array.isArray(result.data)) {
+        const formattedData = result.data.map((item: any, index: number) => {
+          // Format the data to match the TableData interface
+          const formattedItem: TableData = {
+            id: index + 1,
+            fileName: `Bill_${item.ACC_No || index}.pdf`,
+            // Map the database fields directly to our TableData interface
+            ACC_No: item.ACC_No,
+            Stand_No: item.Stand_No,
+            Street_No: item.Street_No,
+            Stand_valuation: item.Stand_valuation,
+            Route_No: item.Route_No,
+            Deposit: item.Deposit,
+            Guarantee: item.Guarantee,
+            Acc_Date: item.Acc_Date,
+            Improvements: item.Improvements,
+            Payments_up_to: item.Payments_up_to,
+            VAT_Reg_No: item.VAT_Reg_No,
+            Balance_B_F: item.Balance_B_F,
+            Payments: item.Payments,
+            Sub_total: item.Sub_total,
+            Month_total: item.Month_total,
+            Total_due: item.Total_due,
+            Over_90: item.Over_90,
+            Ninety_days: item.Ninety_days,
+            Sixty_days: item.Sixty_days,
+            Thirty_days: item.Thirty_days,
+            Current: item.Current,
+            Due_Date: item.Due_Date
+          };
+          
+          return formattedItem;
         });
+        
+        console.log("Formatted data:", formattedData);
+        setData(formattedData);
+        
+        if (formattedData.length > 0) {
+          toast({
+            description: `${formattedData.length} records loaded from database`,
+          });
+        } else {
+          toast({
+            description: "No records found in database",
+          });
+        }
       } else {
+        console.error("Invalid data format received:", result);
         toast({
-          description: "No records found in database",
+          title: "Error",
+          description: "The data received from the server is not in the expected format.",
+          variant: "destructive",
         });
       }
     } catch (error) {

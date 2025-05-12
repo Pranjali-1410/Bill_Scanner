@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const userName = "PRANJALI YADAV";
   const [activeTab, setActiveTab] = useState("database");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Available column options - expanded with Python backend fields
   const availableColumns = [
@@ -66,13 +67,11 @@ const Dashboard = () => {
   const [selectedColumns, setSelectedColumns] = useState([
     'id',
     'fileName',
-    'billDate',
-    'totalAmount',
-    'bankName',
-    'swiftCode',
-    'upiId',
-    'uploadDateTime',
-    'invoiceDate'
+    'ACC No',
+    'Stand No',
+    'Street No',
+    'Total due',
+    'Due Date'
   ]);
   
   const recentFiles = [
@@ -86,6 +85,14 @@ const Dashboard = () => {
       setSelectedColumns(selectedColumns.filter(col => col !== column));
     } else {
       setSelectedColumns([...selectedColumns, column]);
+    }
+  };
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    // Refresh database table data when switching to database tab
+    if (value === "database") {
+      setRefreshTrigger(prev => prev + 1);
     }
   };
 
@@ -150,7 +157,7 @@ const Dashboard = () => {
         
         {/* Action Tabs - Smaller size with increased bottom margin for spacing */}
         <div className="mb-12">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid grid-cols-3 gap-4 bg-transparent p-0">
               <TabsTrigger 
                 value="database" 
@@ -189,14 +196,14 @@ const Dashboard = () => {
             
             {/* Tab Content with increased top margin for spacing */}
             <TabsContent value="upload" className="mt-12">
-              <FileUpload />
+              <FileUpload onDataSaved={() => setActiveTab("database")} />
             </TabsContent>
             
             <TabsContent value="database" className="mt-12">
               <div className="flex flex-col lg:flex-row gap-6">
                 <div className="w-full lg:w-3/4">
                   <div className="bg-white p-4 rounded-lg shadow-sm">
-                    <DatabaseTable selectedColumns={selectedColumns} />
+                    <DatabaseTable key={refreshTrigger} selectedColumns={selectedColumns} />
                   </div>
                 </div>
                 
