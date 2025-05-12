@@ -8,7 +8,8 @@ import psycopg2
 from contextlib import closing
 
 app = Flask(__name__)
-CORS(app)
+# Enable CORS for all routes and origins
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 UPLOAD_FOLDER = './uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -18,15 +19,18 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Tesseract configuration
-pytesseract.pytesseract.tesseract_cmd = os.getenv(
-    'TESSERACT_CMD', r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-)
+# Tesseract configuration - make it work on different OS
+if os.name == 'nt':  # Windows
+    pytesseract.pytesseract.tesseract_cmd = os.getenv(
+        'TESSERACT_CMD', r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    )
+else:  # Mac/Linux
+    pytesseract.pytesseract.tesseract_cmd = os.getenv('TESSERACT_CMD', r'/usr/bin/tesseract')
 
-# Database credentials from environment variables
+# Database credentials from environment variables with safe defaults
 DB_NAME = os.getenv('DB_NAME', 'bill_db')
 DB_USER = os.getenv('DB_USER', 'postgres')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'Soumyadev@11')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'postgres')
 DB_HOST = os.getenv('DB_HOST', 'localhost')
 DB_PORT = os.getenv('DB_PORT', '5432')
 
@@ -82,6 +86,7 @@ try:
     logger.info("Table schema verified successfully!")
 except Exception as e:
     logger.error(f"Database error: {e}")
+    logger.error("Please make sure PostgreSQL is running and the 'bill_db' database exists")
 
 # === OCR & Extraction Logic ===
 def process_invoice(pdf_path):
@@ -149,6 +154,7 @@ def process_invoice(pdf_path):
         return {'success': True, 'results': results}
 
     except Exception as e:
+        logger.error(f"Processing error: {e}")
         return {'success': False, 'error': str(e)}
 
 # === Routes ===
@@ -247,4 +253,6 @@ def scan_pdf():
     return jsonify(result)
 
 if __name__ == '__main__':
+    print("Starting Flask server on http://localhost:5000")
+    print("Make sure you have PostgreSQL running with a database named 'bill_db'")
     app.run(debug=True, port=5000)

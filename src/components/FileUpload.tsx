@@ -14,6 +14,11 @@ const FileUpload = () => {
   const [extractedData, setExtractedData] = useState<any | null>(null);
   const { toast } = useToast();
   
+  // Define backend URL that works both in development and when deployed
+  const BACKEND_URL = import.meta.env.PROD 
+    ? window.location.origin.replace('3000', '5000') // If in production, adjust port
+    : 'http://localhost:5000'; // Default for development
+  
   const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,8 +58,9 @@ const FileUpload = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
       
+      console.log("Uploading to:", `${BACKEND_URL}/upload`);
       // Send to backend
-      const response = await fetch('http://localhost:5000/upload', {
+      const response = await fetch(`${BACKEND_URL}/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -73,7 +79,9 @@ const FileUpload = () => {
       console.error('Upload error:', error);
       toast({
         title: "Upload Failed",
-        description: error instanceof Error ? error.message : "Server error occurred",
+        description: error instanceof Error 
+          ? error.message 
+          : "Server error occurred. Make sure the backend is running at " + BACKEND_URL,
         variant: "destructive",
       });
     } finally {
@@ -95,7 +103,7 @@ const FileUpload = () => {
     
     try {
       // Send to scan endpoint
-      const response = await fetch('http://localhost:5000/scan', {
+      const response = await fetch(`${BACKEND_URL}/scan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -143,7 +151,7 @@ const FileUpload = () => {
     setIsSaving(true);
     
     try {
-      const response = await fetch('http://localhost:5000/upload-bill', {
+      const response = await fetch(`${BACKEND_URL}/upload-bill`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

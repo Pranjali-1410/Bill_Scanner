@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Edit, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,15 +18,15 @@ import AddNewRowDialog from './AddNewRowDialog';
 interface TableData {
   id: number;
   fileName: string;
-  billDate: string;
-  totalAmount: string;
-  bankName: string;
-  swiftCode: string;
-  upiId: string;
-  uploadDateTime: string;
-  invoiceDate: string;
-  taxInvoiceNo: string;
-  gstNo: string;
+  billDate?: string;
+  totalAmount?: string;
+  bankName?: string;
+  swiftCode?: string;
+  upiId?: string;
+  uploadDateTime?: string;
+  invoiceDate?: string;
+  taxInvoiceNo?: string;
+  gstNo?: string;
   // Fields from Python backend
   Stand_No?: string;
   Street_No?: string;
@@ -102,7 +103,13 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [editingRow, setEditingRow] = useState<TableData | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  
+  // Define backend URL that works both in development and when deployed
+  const BACKEND_URL = import.meta.env.PROD 
+    ? window.location.origin.replace('3000', '5000') // If in production, adjust port
+    : 'http://localhost:5000'; // Default for development
 
   // Enhanced column map to include backend fields
   const columnMap: Record<string, keyof TableData> = {
@@ -148,6 +155,11 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       key: columnMap[col] || col.toLowerCase().replace(/\s/g, '')
     };
   });
+
+  // Fetch data from backend when component mounts
+  useEffect(() => {
+    fetchDataFromBackend();
+  }, []);
 
   const handleRowSelect = (id: number) => {
     setSelectedRows(prev => 
@@ -224,33 +236,49 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     });
   };
 
-  // Add function to fetch data from backend (to be implemented)
+  // Add function to fetch data from backend
   const fetchDataFromBackend = async () => {
+    setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/get-all-bills'); // This endpoint would need to be added to your Python backend
+      console.log("Fetching data from:", `${BACKEND_URL}/get-all-bills`);
+      const response = await fetch(`${BACKEND_URL}/get-all-bills`);
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.status}`);
       }
-      const fetchedData = await response.json();
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || "Failed to load data");
+      }
       
       // Convert backend data format to TableData format
-      const formattedData = fetchedData.map((item: any, index: number) => ({
+      const formattedData = result.data.map((item: any, index: number) => ({
         id: index + 1,
-        fileName: `Bill_${item.ACC_No || index}.pdf`,
+        fileName: `Bill_${item.acc_no || index}.pdf`,
         ...item
       }));
       
-      setData(formattedData);
-      toast({
-        description: "Data loaded from database",
-      });
+      if (formattedData.length > 0) {
+        setData(formattedData);
+        toast({
+          description: `${formattedData.length} records loaded from database`,
+        });
+      } else {
+        toast({
+          description: "No records found in database",
+        });
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
         title: "Error",
-        description: "Failed to load data from database",
+        description: error instanceof Error 
+          ? error.message 
+          : "Failed to load data from database. Make sure the backend is running.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -281,13 +309,14 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
           
           <button 
             onClick={fetchDataFromBackend}
-            className="bg-kpmg-blue text-white px-3 py-2 rounded flex items-center gap-2 hover:bg-kpmg-blue/90"
+            disabled={isLoading}
+            className="bg-kpmg-blue text-white px-3 py-2 rounded flex items-center gap-2 hover:bg-kpmg-blue/90 disabled:opacity-70"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isLoading ? "animate-spin" : ""}>
               <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.24"></path>
               <path d="M21 3v9h-9"></path>
             </svg>
-            Refresh Data
+            {isLoading ? "Loading..." : "Refresh Data"}
           </button>
         </div>
       </div>
@@ -315,7 +344,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
               {data.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={displayColumns.length + 2} className="text-center py-4">
-                    No data available
+                    {isLoading ? "Loading data..." : "No data available"}
                   </TableCell>
                 </TableRow>
               ) : (

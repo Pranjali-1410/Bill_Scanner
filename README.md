@@ -1,73 +1,111 @@
-# Welcome to your Lovable project
 
-## Project info
+# KPMG Bill Processing Application
 
-**URL**: https://lovable.dev/projects/c504d85e-b131-45cc-b1bf-65c465bed4a3
+This application provides OCR-based utility bill processing and storage.
 
-## How can I edit this code?
+## Project Structure
 
-There are several ways of editing your application.
+- `src/`: Frontend React code
+- `backend/`: Python Flask backend for OCR processing
 
-**Use Lovable**
+## Setup Instructions
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/c504d85e-b131-45cc-b1bf-65c465bed4a3) and start prompting.
+### 1. Frontend Setup
 
-Changes made via Lovable will be committed automatically to this repo.
+1. Install Node.js and npm if not already installed
+2. Clone the repository:
+   ```
+   git clone <repository-url>
+   cd <project-folder>
+   ```
+3. Install dependencies:
+   ```
+   npm install
+   ```
+4. Start the frontend development server:
+   ```
+   npm run dev
+   ```
+   The frontend will be available at http://localhost:8080
 
-**Use your preferred IDE**
+### 2. Backend Setup
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+1. Navigate to the backend folder:
+   ```
+   cd backend
+   ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+2. Create a Python virtual environment:
+   ```
+   # Windows
+   python -m venv venv
+   venv\Scripts\activate
 
-Follow these steps:
+   # Mac/Linux
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+3. Install the requirements:
+   ```
+   pip install -r requirements.txt
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+4. Create a PostgreSQL database:
+   - Open pgAdmin
+   - Create a new database named `bill_db`
+   - Or use an existing database by setting environment variables
 
-# Step 3: Install the necessary dependencies.
-npm i
+5. (Optional) Set environment variables:
+   ```
+   # Windows
+   set DB_NAME=bill_db
+   set DB_USER=postgres
+   set DB_PASSWORD=your_password
+   set DB_HOST=localhost
+   set DB_PORT=5432
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+   # Mac/Linux
+   export DB_NAME=bill_db
+   export DB_USER=postgres
+   export DB_PASSWORD=your_password
+   export DB_HOST=localhost
+   export DB_PORT=5432
+   ```
 
-**Edit a file directly in GitHub**
+6. Create an 'uploads' folder:
+   ```
+   mkdir uploads
+   ```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+7. Install Tesseract OCR:
+   - Windows: Download from https://github.com/UB-Mannheim/tesseract/wiki
+   - Mac: `brew install tesseract`
+   - Linux: `sudo apt-get install tesseract-ocr`
 
-**Use GitHub Codespaces**
+8. Start the backend server:
+   ```
+   python server.py
+   ```
+   The API will be available at http://localhost:5000
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Testing the Application
 
-## What technologies are used for this project?
+1. Make sure both frontend and backend servers are running
+2. Navigate to http://localhost:8080 in your browser
+3. Upload a utility bill file (PDF, JPG, PNG)
+4. Process the file with the OCR scanner
+5. View the extracted data
+6. Save the data to the database
+7. View all records in the database table
 
-This project is built with:
+## Troubleshooting
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- If the backend connection fails, ensure the Flask server is running on port 5000
+- If the database connection fails, check your PostgreSQL credentials and database existence
+- For Tesseract OCR issues, verify it's correctly installed and accessible in your PATH
 
-## How can I deploy this project?
+## Technology Stack
 
-Simply open [Lovable](https://lovable.dev/projects/c504d85e-b131-45cc-b1bf-65c465bed4a3) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- Frontend: React, TypeScript, Tailwind CSS, shadcn-ui
+- Backend: Flask, OpenCV, Pytesseract, PostgreSQL
