@@ -1,335 +1,46 @@
-import { useState } from 'react';
-import { Upload, Scan } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
-import { Button } from '@/components/ui/button';
+
+import React from 'react';
+import { FileUploadProvider } from '@/contexts/FileUploadContext';
+import FileSelector from './FileUpload/FileSelector';
+import FileActions from './FileUpload/FileActions';
 import ExtractedDataDisplay from './ExtractedDataDisplay';
+import { useFileUpload } from '@/contexts/FileUploadContext';
 
 interface FileUploadProps {
   onDataSaved?: () => void;
 }
 
-const FileUpload = ({ onDataSaved }: FileUploadProps) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [uploadedFilePath, setUploadedFilePath] = useState<string | null>(null);
-  const [extractedData, setExtractedData] = useState<any | null>(null);
-  const { toast } = useToast();
+// Internal component that uses the context
+const FileUploadContent = ({ onDataSaved }: FileUploadProps) => {
+  const { selectedFile, extractedData } = useFileUpload();
   
-  // Improved backend URL determination to fix CORS issues
-  const getBackendUrl = () => {
-    if (typeof window === 'undefined') return 'http://localhost:5000';
-    
-    // Check if we're in production (lovable preview) or development
-    const isProduction = import.meta.env.PROD;
-    if (isProduction) {
-      // Use a relative URL when in production to avoid CORS issues
-      return '/api';
-    } else {
-      return 'http://localhost:5000';
-    }
-  };
-  
-  const BACKEND_URL = getBackendUrl();
-  
-  const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      return;
-    }
-    
-    if (!allowedFileTypes.includes(file.type)) {
-      toast({
-        title: "Error",
-        description: "Only PDF, JPG, JPEG and PNG files are supported",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setSelectedFile(file);
-    setUploadedFilePath(null);
-    setExtractedData(null);
-  };
-  
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      toast({
-        title: "Error",
-        description: "Please select a file first",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsUploading(true);
-    
-    try {
-      // Create form data
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      
-      console.log("Uploading to:", `${BACKEND_URL}/upload`);
-      // Send to backend with timeout and proper error handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const response = await fetch(`${BACKEND_URL}/upload`, {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal,
-        credentials: 'include'
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`Upload failed with status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setUploadedFilePath(data.filePath);
-      
-      toast({ 
-        description: `File ${selectedFile.name} uploaded successfully` 
-      });
-    } catch (error) {
-      console.error('Upload error:', error);
-      let errorMessage = "Server connection failed. ";
-      
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorMessage += "Request timed out after 30 seconds.";
-        } else {
-          errorMessage += error.message;
-        }
-      }
-      
-      errorMessage += " Make sure the backend server is running at " + BACKEND_URL;
-      
-      toast({
-        title: "Upload Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-  
-  const handleScan = async () => {
-    if (!uploadedFilePath) {
-      toast({
-        title: "Error",
-        description: "Please upload a file first",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsScanning(true);
-    
-    try {
-      // Send to scan endpoint with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for scanning
-      
-      const response = await fetch(`${BACKEND_URL}/scan`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          filePath: uploadedFilePath,
-          fileName: selectedFile ? selectedFile.name : null 
-        }),
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`Scan failed with status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || "Scanning failed");
-      }
-      
-      // Make sure we include the original filename in extracted data
-      if (selectedFile) {
-        data.results.file_name = selectedFile.name;
-      }
-      
-      setExtractedData(data.results);
-      
-      toast({ 
-        description: "Document scanned successfully! Data extracted." 
-      });
-    } catch (error) {
-      console.error('Scan error:', error);
-      let errorMessage = "Scanning process failed. ";
-      
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorMessage += "Request timed out after 60 seconds.";
-        } else {
-          errorMessage += error.message;
-        }
-      }
-      
-      toast({
-        title: "Scan Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
-  const handleSaveToDatabase = async () => {
-    if (!extractedData) {
-      toast({
-        title: "Error",
-        description: "No data to save",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsSaving(true);
-    
-    try {
-      // Make sure to include the original filename in the data we send
-      const dataToSave = {
-        ...extractedData,
-        file_name: selectedFile ? selectedFile.name : undefined
-      };
-      
-      console.log("Saving data to database:", dataToSave);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      const response = await fetch(`${BACKEND_URL}/upload-bill`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dataToSave),
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to save to database with status: ${response.status}. Details: ${errorText}`);
-      }
-      
-      await response.json();
-      
-      toast({ 
-        title: "Success",
-        description: "Bill data saved to database successfully"
-      });
-
-      // After successful save, switch to database tab if callback is provided
-      if (onDataSaved) {
-        setTimeout(() => {
-          onDataSaved();
-        }, 1500); // Short delay for user to see success message
-      }
-      
-    } catch (error) {
-      console.error('Database save error:', error);
-      let errorMessage = "Database save failed. ";
-      
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorMessage += "Request timed out after 30 seconds.";
-        } else {
-          errorMessage += error.message;
-        }
-      }
-      
-      toast({
-        title: "Save Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm">
+    <>
       <h2 className="text-xl font-semibold mb-6">File Upload</h2>
       
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center">
-        <div className="text-center">
-          <Upload className="mx-auto h-12 w-12 text-gray-400" />
-          <p className="mt-2 text-sm font-medium text-gray-700">
-            Drag and drop your files here
-          </p>
-          <p className="text-xs text-gray-500">or</p>
-          <div className="mt-4">
-            <input
-              type="file"
-              id="fileUpload"
-              className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={handleFileChange}
-            />
-            <label
-              htmlFor="fileUpload"
-              className="inline-flex cursor-pointer px-4 py-2 bg-kpmg-blue text-white rounded-md hover:bg-kpmg-blue/90 transition-colors"
-            >
-              Browse Files
-            </label>
-            
-            {selectedFile && (
-              <div className="mt-4">
-                <p className="text-sm text-gray-700">Selected: {selectedFile.name}</p>
-                <div className="flex gap-4 mt-2">
-                  <Button 
-                    onClick={handleUpload}
-                    disabled={isUploading}
-                    className="bg-kpmg-blue hover:bg-kpmg-blue/90 text-white"
-                  >
-                    {isUploading ? "Uploading..." : "Upload"}
-                  </Button>
-                  
-                  <Button 
-                    onClick={handleScan}
-                    disabled={isScanning || !uploadedFilePath}
-                    className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-                  >
-                    <Scan size={18} />
-                    <span>{isScanning ? "Scanning..." : "Scan"}</span>
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-gray-500 mt-4">Supported files: PDF, JPG, JPEG, PNG</p>
-        </div>
-      </div>
+      <FileSelector />
       
-      {/* Use the ExtractedDataDisplay component */}
-      {extractedData && (
-        <ExtractedDataDisplay 
-          data={extractedData}
-          onSaveToDatabase={handleSaveToDatabase}
-          isSaving={isSaving}
-        />
+      {selectedFile && (
+        <div className="mt-4 flex justify-center">
+          <FileActions />
+        </div>
       )}
+      
+      {/* Display extracted data if available */}
+      {extractedData && (
+        <ExtractedDataDisplay onSaveToDatabase={onDataSaved} />
+      )}
+    </>
+  );
+};
+
+// Wrapper component that provides the context
+const FileUpload = (props: FileUploadProps) => {
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-sm">
+      <FileUploadProvider>
+        <FileUploadContent {...props} />
+      </FileUploadProvider>
     </div>
   );
 };

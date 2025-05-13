@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -9,20 +8,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useFileUpload } from '@/contexts/FileUploadContext';
+import DatabaseSave from './FileUpload/DatabaseSave';
 
 interface ExtractedDataProps {
-  data: Record<string, any> | null;
-  onSaveToDatabase: () => void;
-  isSaving: boolean;
+  onSaveToDatabase?: () => void;
 }
 
-const ExtractedDataDisplay = ({ data, onSaveToDatabase, isSaving }: ExtractedDataProps) => {
-  const { toast } = useToast();
+const ExtractedDataDisplay = ({ onSaveToDatabase }: ExtractedDataProps) => {
+  const { extractedData, isSaving } = useFileUpload();
+  const { handleSaveToDatabase } = DatabaseSave({ onDataSaved: onSaveToDatabase });
 
-  if (!data) return null;
+  if (!extractedData) return null;
 
   // Filter out array data that we don't want to display in the main table
-  const filteredData = Object.entries(data).filter(
+  const filteredData = Object.entries(extractedData).filter(
     ([key]) => key !== 'First 5 Customer Rows' && key !== 'Footer Block'
   );
 
@@ -49,7 +49,7 @@ const ExtractedDataDisplay = ({ data, onSaveToDatabase, isSaving }: ExtractedDat
       </div>
       <div className="mt-4">
         <Button 
-          onClick={onSaveToDatabase}
+          onClick={handleSaveToDatabase}
           disabled={isSaving}
           className="bg-kpmg-blue hover:bg-kpmg-blue/90 text-white"
         >
