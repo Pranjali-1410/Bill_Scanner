@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { Edit, Trash2, Download, FileExcel, FileCsv } from 'lucide-react';
+import { Edit, Trash2, Download, File, Files } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -439,18 +438,18 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="bg-green-600 text-white px-3 py-2 rounded flex items-center gap-2 hover:bg-green-700">
-                <Download size={16} />
+              <Button variant="outline" className="bg-green-600 text-white hover:bg-green-700">
+                <Download className="h-4 w-4 mr-2" />
                 Export
-              </button>
+              </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={exportToExcel} className="flex items-center gap-2 cursor-pointer">
-                <FileExcel size={16} />
+            <DropdownMenuContent align="end" className="bg-white">
+              <DropdownMenuItem onClick={exportToExcel} className="cursor-pointer">
+                <File className="h-4 w-4 mr-2" />
                 <span>Export to Excel</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToCSV} className="flex items-center gap-2 cursor-pointer">
-                <FileCsv size={16} />
+              <DropdownMenuItem onClick={exportToCSV} className="cursor-pointer">
+                <Files className="h-4 w-4 mr-2" />
                 <span>Export to CSV</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
