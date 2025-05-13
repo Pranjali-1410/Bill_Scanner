@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -166,7 +165,7 @@ const Dashboard = () => {
       <main className="container mx-auto px-4 py-6">
         <h1 className="text-2xl font-bold mb-6">Database Dashboard</h1>
         
-        {/* Search and Filter Bar */}
+        {/* Search Bar - Removed filter icon */}
         <div className="flex justify-between items-center mb-6">
           <div className="relative flex-1 max-w-md">
             <Input 
@@ -177,13 +176,6 @@ const Dashboard = () => {
             <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
               <Search size={18} />
             </div>
-          </div>
-          <div className="ml-4">
-            <button className="p-2 border border-gray-300 rounded-md bg-white">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-              </svg>
-            </button>
           </div>
         </div>
         
