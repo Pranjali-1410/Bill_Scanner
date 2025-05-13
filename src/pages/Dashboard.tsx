@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -82,20 +81,19 @@ const Dashboard = () => {
     localStorage.setItem('selectedColumns', JSON.stringify(selectedColumns));
   }, [selectedColumns]);
   
-  // Fetch recent files from backend
+  // Default recentFiles
   const [recentFiles, setRecentFiles] = useState([
     { name: 'Electricity Bills', createdDays: 3 },
     { name: 'Invoice No 5686', createdDays: 10 },
     { name: 'Invoice No 1124', createdDays: 10 }
   ]);
 
-  // Fetch real recent files from the uploads directory
+  // Fetch real recent files from the uploads directory using the same backend URL construction
   useEffect(() => {
     const fetchRecentFiles = async () => {
       try {
-        const BACKEND_URL = import.meta.env.PROD 
-          ? (window.location.protocol + '//' + window.location.hostname + ':5000')
-          : 'http://localhost:5000';
+        const BACKEND_URL = window.location.protocol + '//' + window.location.hostname + 
+          (window.location.hostname === 'localhost' ? ':5000' : ':5000');
           
         const response = await fetch(`${BACKEND_URL}/recent-files`);
         if (response.ok) {

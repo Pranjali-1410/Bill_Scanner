@@ -28,9 +28,9 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
   const { toast } = useToast();
   
   // Define backend URL that works both in development and when deployed
-  const BACKEND_URL = import.meta.env.PROD 
-    ? (window.location.protocol + '//' + window.location.hostname + ':5000') // Use same host with port 5000
-    : 'http://localhost:5000'; // Default for development
+  // Updated to use the same protocol (http/https) as the current page
+  const BACKEND_URL = window.location.protocol + '//' + window.location.hostname + 
+    (window.location.hostname === 'localhost' ? ':5000' : ':5000');
 
   // Enhanced column map to include backend fields
   const columnMap: Record<string, keyof TableData> = {
@@ -129,7 +129,6 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ accounts: selectedAccountNumbers }),
-        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -212,15 +211,14 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     setIsLoading(true);
     try {
       console.log("Fetching data from:", `${BACKEND_URL}/get-all-bills`);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
+      // Increase timeout to 10 seconds and remove the AbortController to avoid premature timeouts
       const response = await fetch(`${BACKEND_URL}/get-all-bills`, {
-        signal: controller.signal,
-        credentials: 'include'
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
-      
-      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.status}`);
