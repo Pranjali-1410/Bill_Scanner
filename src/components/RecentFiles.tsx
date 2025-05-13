@@ -1,6 +1,5 @@
 
 import { FileText } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 interface RecentFile {
   name: string;
@@ -24,17 +23,11 @@ const RecentFiles: React.FC<RecentFilesProps> = ({ files }) => {
             <div 
               key={index} 
               className="flex items-center border border-gray-200 rounded-md p-3 hover:bg-gray-50 cursor-pointer"
-              title={file.name}
             >
-              <FileText size={16} className="text-kpmg-blue mr-2 flex-shrink-0" />
-              <div className="overflow-hidden">
-                <p className="text-sm font-medium text-gray-700 truncate">{file.name}</p>
-                <p className="text-xs text-gray-500">
-                  {file.createdDays === 1 ? 'Today' : 
-                   file.createdDays < 7 ? `${file.createdDays}d ago` :
-                   file.createdDays < 30 ? `${Math.floor(file.createdDays/7)}w ago` :
-                   `${Math.floor(file.createdDays/30)}mo ago`}
-                </p>
+              <FileText size={16} className="text-kpmg-blue mr-2" />
+              <div>
+                <p className="text-sm font-medium text-gray-700">{file.name}</p>
+                <p className="text-xs text-gray-500">{file.createdDays}d</p>
               </div>
             </div>
           ))

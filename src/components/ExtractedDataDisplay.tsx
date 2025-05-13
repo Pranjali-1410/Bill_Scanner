@@ -1,5 +1,7 @@
 
 import React from 'react';
+import { useToast } from "@/hooks/use-toast";
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -7,20 +9,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useFileUpload } from '@/contexts/FileUploadContext';
-import DatabaseSave from './FileUpload/DatabaseSave';
 
 interface ExtractedDataProps {
-  onSaveToDatabase?: () => void;
+  data: Record<string, any> | null;
+  onSaveToDatabase: () => void;
+  isSaving: boolean;
 }
 
-const ExtractedDataDisplay = ({ onSaveToDatabase }: ExtractedDataProps) => {
-  const { extractedData } = useFileUpload();
+const ExtractedDataDisplay = ({ data, onSaveToDatabase, isSaving }: ExtractedDataProps) => {
+  const { toast } = useToast();
 
-  if (!extractedData) return null;
+  if (!data) return null;
 
   // Filter out array data that we don't want to display in the main table
-  const filteredData = Object.entries(extractedData).filter(
+  const filteredData = Object.entries(data).filter(
     ([key]) => key !== 'First 5 Customer Rows' && key !== 'Footer Block'
   );
 
@@ -46,7 +48,13 @@ const ExtractedDataDisplay = ({ onSaveToDatabase }: ExtractedDataProps) => {
         </Table>
       </div>
       <div className="mt-4">
-        <DatabaseSave onDataSaved={onSaveToDatabase} />
+        <Button 
+          onClick={onSaveToDatabase}
+          disabled={isSaving}
+          className="bg-kpmg-blue hover:bg-kpmg-blue/90 text-white"
+        >
+          {isSaving ? "Saving..." : "Save to Database"}
+        </Button>
       </div>
     </div>
   );

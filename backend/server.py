@@ -7,7 +7,6 @@ import logging
 import psycopg2
 from contextlib import closing
 import datetime
-import json
 
 app = Flask(__name__)
 # Enable CORS for all routes and origins with additional configurations
@@ -58,7 +57,7 @@ try:
     cursor = conn.cursor()
     logger.info("Database connection successful.")
     
-    # Create table if it doesn't exist - now with file_name column
+    # Create table if it doesn't exist
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS bill_data (
         Stand_No TEXT,
@@ -82,8 +81,7 @@ try:
         Sixty_days TEXT,
         Thirty_days TEXT,
         Current TEXT,
-        Due_Date TEXT,
-        file_name TEXT
+        Due_Date TEXT
     );
     """)
     
@@ -130,9 +128,6 @@ def upload_bill():
             acc_no = int(acc_no)
         except ValueError:
             return jsonify({'error': 'ACC_No must be a number'}), 400
-        
-        # Extract filename if it exists - ensure we use the original filename
-        file_name = data.get('file_name', f"Bill_{acc_no}.pdf")
             
         # Prepare field values for database
         fields = [
@@ -140,16 +135,15 @@ def upload_bill():
             'Deposit', 'Guarantee', 'Acc_Date', 'Improvements', 'Payments_up_to',
             'VAT_Reg_No', 'Balance_B_F', 'Payments', 'Sub_total', 'Month_total',
             'Total_due', 'Over_90', 'Ninety_days', 'Sixty_days', 'Thirty_days',
-            'Current', 'Due_Date', 'file_name'
+            'Current', 'Due_Date'
         ]
         
         # Create placeholders for SQL query
         placeholders = ', '.join(['%s'] * len(fields))
         columns = ', '.join(fields)
         
-        # Get values from the incoming data, add filename at the end
-        values = [data.get(field) for field in fields[:-1]]
-        values.append(file_name)
+        # Get values from the incoming data
+        values = [data.get(field) for field in fields]
         
         logger.info(f"Fields: {fields}")
         logger.info(f"Values: {values}")
@@ -227,12 +221,7 @@ def upload_pdf():
     file.save(file_path)
     logger.info(f"File saved at {file_path}")
 
-    # Return filename as part of the response
-    return jsonify({
-        'message': 'File uploaded successfully', 
-        'filePath': file_path,
-        'fileName': file.filename
-    })
+    return jsonify({'message': 'File uploaded successfully', 'filePath': file_path})
 
 @app.route('/scan', methods=['POST', 'OPTIONS'])
 def scan_pdf():
@@ -243,18 +232,12 @@ def scan_pdf():
         
     data = request.get_json()
     file_path = data.get('filePath')
-    file_name = data.get('fileName', os.path.basename(file_path))
 
     if not file_path or not os.path.exists(file_path):
         return jsonify({'error': 'Invalid or missing file path'}), 400
         
     logger.info(f"Scanning file: {file_path}")
     result = process_invoice(file_path)
-    
-    # Add filename to the result
-    if isinstance(result, dict) and result.get('success') == True:
-        result['results']['file_name'] = file_name
-        
     return jsonify(result)
 
 @app.route('/recent-files', methods=['GET', 'OPTIONS'])
@@ -267,22 +250,19 @@ def recent_files():
     try:
         # Get list of files in the uploads directory
         files = []
-        if os.path.exists(UPLOAD_FOLDER):
-            for filename in os.listdir(UPLOAD_FOLDER):
-                if os.path.isfile(os.path.join(UPLOAD_FOLDER, filename)):
-                    file_path = os.path.join(UPLOAD_FOLDER, filename)
-                    # Get file creation time
-                    creation_time = os.path.getctime(file_path)
-                    creation_date = datetime.datetime.fromtimestamp(creation_time)
-                    days_old = (datetime.datetime.now() - creation_date).days
-                    
-                    # Add file to the list
-                    files.append({
-                        'name': filename,
-                        'createdDays': days_old if days_old > 0 else 1
-                    })
-        else:
-            logger.warning(f"Upload folder {UPLOAD_FOLDER} does not exist")
+        for filename in os.listdir(UPLOAD_FOLDER):
+            if os.path.isfile(os.path.join(UPLOAD_FOLDER, filename)):
+                file_path = os.path.join(UPLOAD_FOLDER, filename)
+                # Get file creation time
+                creation_time = os.path.getctime(file_path)
+                creation_date = datetime.datetime.fromtimestamp(creation_time)
+                days_old = (datetime.datetime.now() - creation_date).days
+                
+                # Add file to the list
+                files.append({
+                    'name': filename,
+                    'createdDays': days_old if days_old > 0 else 1
+                })
                 
         # Sort files by creation date (newest first)
         files.sort(key=lambda x: x['createdDays'])
@@ -302,55 +282,19 @@ def delete_bills():
         return response
         
     try:
-        # Debug incoming request
-        request_data = request.get_data().decode('utf-8')
-        logger.info(f"Raw DELETE request data: {request_data}")
-        
-        # Parse JSON data
-        try:
-            data = request.get_json()
-            if not data:
-                logger.error("No JSON data found in request")
-                data = json.loads(request_data) if request_data else {}
-        except Exception as e:
-            logger.error(f"JSON parsing error: {e}")
-            return jsonify({'error': f'Invalid JSON: {str(e)}'}), 400
-            
-        logger.info(f"Parsed DELETE request data: {data}")
-            
+        data = request.get_json()
         account_numbers = data.get('accountNumbers', [])
-        logger.info(f"Account numbers from request: {account_numbers}")
         
         if not account_numbers:
             return jsonify({'error': 'No account numbers provided'}), 400
             
         logger.info(f"Deleting bills with account numbers: {account_numbers}")
         
-        # Convert any string account numbers to integers 
-        formatted_acc_nos = []
-        for acc_no in account_numbers:
-            try:
-                if isinstance(acc_no, str):
-                    formatted_acc_nos.append(int(acc_no))
-                else:
-                    formatted_acc_nos.append(acc_no)
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Could not convert account number {acc_no} to int: {e}")
-        
-        # If we couldn't convert any account numbers, return an error
-        if not formatted_acc_nos:
-            return jsonify({'error': 'No valid account numbers provided'}), 400
-            
-        logger.info(f"Formatted account numbers: {formatted_acc_nos}")
-        
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
-                # Use parameterized query for security
-                placeholders = ', '.join(['%s'] * len(formatted_acc_nos))
-                query = f"DELETE FROM bill_data WHERE ACC_No IN ({placeholders})"
-                
-                logger.info(f"Executing delete query with account numbers: {formatted_acc_nos}")
-                cursor.execute(query, formatted_acc_nos)
+                account_list = ', '.join([str(acc_no) for acc_no in account_numbers])
+                query = f"DELETE FROM bill_data WHERE ACC_No IN ({account_list})"
+                cursor.execute(query)
                 deleted_count = cursor.rowcount
                 conn.commit()
                 

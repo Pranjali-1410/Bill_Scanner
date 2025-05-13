@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Edit, Trash2, Download, File, Files } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -11,17 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 import EditRowDialog from './EditRowDialog';
 import AddNewRowDialog from './AddNewRowDialog';
 import { TableData } from '@/types/database';
-import { getBackendUrl } from '@/utils/apiUtils';
 
 interface DatabaseTableProps {
   selectedColumns: string[];
@@ -33,11 +25,12 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
   const [editingRow, setEditingRow] = useState<TableData | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   
-  // Use the consistent backend URL from utils
-  const BACKEND_URL = getBackendUrl();
+  // Define backend URL that works both in development and when deployed
+  const BACKEND_URL = import.meta.env.PROD 
+    ? (window.location.protocol + '//' + window.location.hostname + ':5000') // Use same host with port 5000
+    : 'http://localhost:5000'; // Default for development
 
   // Enhanced column map to include backend fields
   const columnMap: Record<string, keyof TableData> = {
@@ -115,8 +108,6 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       return;
     }
     
-    setIsDeleting(true);
-    
     try {
       // Get the ACC_No values for the selected rows to delete from database
       const selectedAccountNumbers = selectedRows.map(rowId => {
@@ -124,45 +115,18 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
         return row?.ACC_No;
       }).filter(Boolean); // Remove undefined values
       
-      console.log("Account numbers to delete:", selectedAccountNumbers);
-      
-      if (selectedAccountNumbers.length === 0) {
-        throw new Error("No valid account numbers found for deletion");
-      }
-      
-      // Create controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      
-      // Send delete request to the backend with proper credentials
+      // Send delete request to the backend
       const response = await fetch(`${BACKEND_URL}/delete-bills`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ accountNumbers: selectedAccountNumbers }),
-        credentials: 'include',
-        signal: controller.signal
       });
       
-      clearTimeout(timeoutId);
-      
       if (!response.ok) {
-        // Try to get error details from the response
-        let errorMessage = "Failed to delete from database";
-        try {
-          const errorResponse = await response.json();
-          errorMessage = errorResponse.error || errorMessage;
-        } catch (e) {
-          // If parsing fails, use the status text
-          errorMessage = `Failed with status: ${response.status} ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
+        throw new Error('Failed to delete from database');
       }
-      
-      const responseData = await response.json();
-      
-      console.log("Delete response:", responseData);
       
       // If successful, update UI
       const updatedData = data.filter(row => !selectedRows.includes(row.id));
@@ -182,27 +146,11 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       
     } catch (error) {
       console.error('Error deleting rows:', error);
-      
-      // Show a more informative error message
-      let errorMessage = "Failed to delete rows from database. ";
-      
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          errorMessage += "Request timed out after 30 seconds.";
-        } else if (error.message.includes('Failed to fetch')) {
-          errorMessage += "Cannot connect to the backend server. Please check that the server is running.";
-        } else {
-          errorMessage += error.message;
-        }
-      }
-      
       toast({
-        title: "Delete Failed",
-        description: errorMessage,
+        title: "Error",
+        description: "Failed to delete rows from database",
         variant: "destructive",
       });
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -239,107 +187,6 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     });
   };
 
-  // Export data functions
-  const exportToCSV = () => {
-    try {
-      // Get only displayed columns for export
-      const exportData = data.map(row => {
-        const exportRow: Record<string, any> = {};
-        displayColumns.forEach(column => {
-          exportRow[column.name] = row[column.key as keyof TableData];
-        });
-        return exportRow;
-      });
-      
-      // Convert to CSV
-      const headers = displayColumns.map(col => col.name);
-      const csvContent = [
-        headers.join(','),
-        ...exportData.map(row => headers.map(header => {
-          const value = row[header];
-          // Handle values that contain commas by wrapping in quotes
-          return `"${value !== undefined && value !== null ? String(value).replace(/"/g, '""') : ''}"`; 
-        }).join(','))
-      ].join('\n');
-      
-      // Create and download file
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', 'database_export.csv');
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        description: "Data exported to CSV successfully",
-      });
-    } catch (error) {
-      console.error('Error exporting to CSV:', error);
-      toast({
-        title: "Export Error",
-        description: "Failed to export data to CSV",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const exportToExcel = () => {
-    try {
-      // Generate Excel-compatible XML
-      const xmlContent = [
-        '<?xml version="1.0"?>',
-        '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
-        '<Worksheet ss:Name="Database">',
-        '<Table>'
-      ];
-      
-      // Add headers
-      xmlContent.push('<Row>');
-      displayColumns.forEach(column => {
-        xmlContent.push(`<Cell><Data ss:Type="String">${column.name}</Data></Cell>`);
-      });
-      xmlContent.push('</Row>');
-      
-      // Add data rows
-      data.forEach(row => {
-        xmlContent.push('<Row>');
-        displayColumns.forEach(column => {
-          const value = row[column.key as keyof TableData];
-          xmlContent.push(`<Cell><Data ss:Type="String">${value !== undefined && value !== null ? value : ''}</Data></Cell>`);
-        });
-        xmlContent.push('</Row>');
-      });
-      
-      // Close XML tags
-      xmlContent.push('</Table></Worksheet></Workbook>');
-      
-      // Create and download file
-      const blob = new Blob([xmlContent.join('')], { type: 'application/vnd.ms-excel' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', 'database_export.xls');
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        description: "Data exported to Excel successfully",
-      });
-    } catch (error) {
-      console.error('Error exporting to Excel:', error);
-      toast({
-        title: "Export Error",
-        description: "Failed to export data to Excel",
-        variant: "destructive",
-      });
-    }
-  };
-
   // Updated function to fetch data from backend with better error handling
   const fetchDataFromBackend = async () => {
     setIsLoading(true);
@@ -349,24 +196,13 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
       const response = await fetch(`${BACKEND_URL}/get-all-bills`, {
-        signal: controller.signal,
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
+        signal: controller.signal
       });
       
       clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.status}`);
-      }
-      
-      // Check if the response is HTML instead of JSON (which would indicate a routing/server issue)
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('text/html')) {
-        throw new Error('The server returned HTML instead of JSON. Backend API might be misconfigured.');
       }
       
       const result = await response.json();
@@ -376,15 +212,13 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       }
       
       // Convert backend data format to TableData format
+      // Ensure proper field name formatting from snake_case to camelCase for display
       if (result.data && Array.isArray(result.data)) {
         const formattedData = result.data.map((item: any, index: number) => {
-          // Use actual filename if available, otherwise construct one from account number
-          const fileName = item.file_name || `Bill_${item.ACC_No || index}.pdf`;
-          
           // Format the data to match the TableData interface
           const formattedItem: TableData = {
             id: index + 1,
-            fileName: fileName,
+            fileName: `Bill_${item.ACC_No || index}.pdf`,
             // Map the database fields directly to our TableData interface
             ACC_No: item.ACC_No,
             Stand_No: item.Stand_No,
@@ -435,57 +269,11 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      
-      // Show a more friendly error message that includes how to fix the problem
-      let errorMessage = "Failed to load data from database.";
-      
-      if (error instanceof Error) {
-        if (error.name === "AbortError") {
-          errorMessage = "Request timed out. The backend server may be slow or unresponsive.";
-        } else if (error.message.includes("Failed to fetch")) {
-          errorMessage = "Could not connect to the backend server. Please make sure the backend is running at " + BACKEND_URL;
-          
-          // Add mock data for development purposes when backend is not available
-          const mockData: TableData[] = Array(5).fill(null).map((_, i) => ({
-            id: i + 1,
-            fileName: `Sample_Bill_${i + 1}.pdf`,
-            ACC_No: `10000${i + 1}`,
-            Stand_No: `Stand-${i + 1}`,
-            Street_No: `Street-${i + 1}`,
-            Stand_valuation: `${(100000 + i * 10000).toFixed(2)}`,
-            Total_due: `${(1000 + i * 100).toFixed(2)}`,
-            Due_Date: "2025-06-15",
-            Route_No: "R-101",
-            Deposit: "1000.00",
-            Guarantee: "5000.00",
-            Acc_Date: "2025-05-01",
-            Improvements: "None",
-            Payments_up_to: "2025-05-01",
-            VAT_Reg_No: "VAT12345",
-            Balance_B_F: "0.00",
-            Payments: "500.00",
-            Sub_total: "1500.00", 
-            Month_total: "1500.00",
-            Over_90: "0.00",
-            Ninety_days: "0.00",
-            Sixty_days: "0.00",
-            Thirty_days: "0.00",
-            Current: "1500.00"
-          }));
-          
-          setData(mockData);
-          toast({
-            description: "Using sample data - backend connection failed",
-            variant: "default",
-          });
-        } else if (error.message.includes('HTML instead of JSON')) {
-          errorMessage = "API endpoint configuration issue. The server returned HTML instead of JSON data.";
-        }
-      }
-      
       toast({
-        title: "Connection Error",
-        description: errorMessage,
+        title: "Error",
+        description: error instanceof Error 
+          ? error.message 
+          : "Failed to load data from database. Make sure the backend is running.",
         variant: "destructive",
       });
     } finally {
@@ -500,43 +288,12 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
         <div className="flex gap-4">
           <button 
             onClick={handleDeleteSelected}
-            disabled={selectedRows.length === 0 || isDeleting}
+            disabled={selectedRows.length === 0}
             className="bg-[#ea384c] text-white px-3 py-2 rounded flex items-center gap-2 disabled:opacity-50"
           >
-            {isDeleting ? (
-              <>
-                <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.24"></path>
-                  <path d="M21 3v9h-9"></path>
-                </svg>
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 size={16} />
-                Delete All
-              </>
-            )}
+            <Trash2 size={16} />
+            Delete All
           </button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="bg-green-600 text-white hover:bg-green-700">
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-white">
-              <DropdownMenuItem onClick={exportToExcel} className="cursor-pointer">
-                <File className="h-4 w-4 mr-2" />
-                <span>Export to Excel</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToCSV} className="cursor-pointer">
-                <Files className="h-4 w-4 mr-2" />
-                <span>Export to CSV</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
           
           <button 
             onClick={() => setIsAddDialogOpen(true)}
