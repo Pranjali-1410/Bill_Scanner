@@ -34,10 +34,21 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   
-  // Define backend URL that works both in development and when deployed
-  const BACKEND_URL = import.meta.env.PROD 
-    ? (window.location.protocol + '//' + window.location.hostname + ':5000') // Use same host with port 5000
-    : 'http://localhost:5000'; // Default for development
+  // Improved backend URL determination to fix CORS issues
+  const getBackendUrl = () => {
+    if (typeof window === 'undefined') return 'http://localhost:5000';
+    
+    // Check if we're in production (lovable preview) or development
+    const isProduction = import.meta.env.PROD;
+    if (isProduction) {
+      // Use a relative URL when in production to avoid CORS issues
+      return '/api';
+    } else {
+      return 'http://localhost:5000';
+    }
+  };
+  
+  const BACKEND_URL = getBackendUrl();
 
   // Enhanced column map to include backend fields
   const columnMap: Record<string, keyof TableData> = {
@@ -322,7 +333,11 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       
       const response = await fetch(`${BACKEND_URL}/get-all-bills`, {
         signal: controller.signal,
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
       });
       
       clearTimeout(timeoutId);
@@ -338,7 +353,6 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       }
       
       // Convert backend data format to TableData format
-      // Ensure proper field name formatting from snake_case to camelCase for display
       if (result.data && Array.isArray(result.data)) {
         const formattedData = result.data.map((item: any, index: number) => {
           // Use actual filename if available, otherwise construct one from account number
@@ -398,11 +412,55 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
+      
+      // Show a more friendly error message that includes how to fix the problem
+      let errorMessage = "Failed to load data from database.";
+      
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          errorMessage = "Request timed out. The backend server may be slow or unresponsive.";
+        } else if (error.message.includes("Failed to fetch")) {
+          errorMessage = "Could not connect to the backend server. Please make sure the backend is running at " + BACKEND_URL;
+          
+          // Add mock data for development purposes when backend is not available
+          const mockData: TableData[] = Array(5).fill(null).map((_, i) => ({
+            id: i + 1,
+            fileName: `Sample_Bill_${i + 1}.pdf`,
+            ACC_No: `10000${i + 1}`,
+            Stand_No: `Stand-${i + 1}`,
+            Street_No: `Street-${i + 1}`,
+            Stand_valuation: `${(100000 + i * 10000).toFixed(2)}`,
+            Total_due: `${(1000 + i * 100).toFixed(2)}`,
+            Due_Date: "2025-06-15",
+            Route_No: "R-101",
+            Deposit: "1000.00",
+            Guarantee: "5000.00",
+            Acc_Date: "2025-05-01",
+            Improvements: "None",
+            Payments_up_to: "2025-05-01",
+            VAT_Reg_No: "VAT12345",
+            Balance_B_F: "0.00",
+            Payments: "500.00",
+            Sub_total: "1500.00", 
+            Month_total: "1500.00",
+            Over_90: "0.00",
+            Ninety_days: "0.00",
+            Sixty_days: "0.00",
+            Thirty_days: "0.00",
+            Current: "1500.00"
+          }));
+          
+          setData(mockData);
+          toast({
+            description: "Using sample data - backend connection failed",
+            variant: "default",
+          });
+        }
+      }
+      
       toast({
-        title: "Error",
-        description: error instanceof Error 
-          ? error.message 
-          : "Failed to load data from database. Make sure the backend is running.",
+        title: "Connection Error",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

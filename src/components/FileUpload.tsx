@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Upload, Scan } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -18,10 +17,21 @@ const FileUpload = ({ onDataSaved }: FileUploadProps) => {
   const [extractedData, setExtractedData] = useState<any | null>(null);
   const { toast } = useToast();
   
-  // Define backend URL that works both in development and when deployed
-  const BACKEND_URL = import.meta.env.PROD 
-    ? (window.location.protocol + '//' + window.location.hostname + ':5000') // Use same host with port 5000
-    : 'http://localhost:5000'; // Default for development
+  // Improved backend URL determination to fix CORS issues
+  const getBackendUrl = () => {
+    if (typeof window === 'undefined') return 'http://localhost:5000';
+    
+    // Check if we're in production (lovable preview) or development
+    const isProduction = import.meta.env.PROD;
+    if (isProduction) {
+      // Use a relative URL when in production to avoid CORS issues
+      return '/api';
+    } else {
+      return 'http://localhost:5000';
+    }
+  };
+  
+  const BACKEND_URL = getBackendUrl();
   
   const allowedFileTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
   
@@ -70,7 +80,8 @@ const FileUpload = ({ onDataSaved }: FileUploadProps) => {
       const response = await fetch(`${BACKEND_URL}/upload`, {
         method: 'POST',
         body: formData,
-        signal: controller.signal
+        signal: controller.signal,
+        credentials: 'include'
       });
       
       clearTimeout(timeoutId);

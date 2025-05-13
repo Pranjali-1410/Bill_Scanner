@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -88,28 +89,57 @@ const Dashboard = () => {
     { name: 'Invoice No 1124', createdDays: 10 }
   ]);
 
+  // Improved backend URL determination to fix CORS issues
+  // When deployed, we'll need to use a relative URL or the window.location.host
+  const getBackendUrl = () => {
+    if (typeof window === 'undefined') return 'http://localhost:5000';
+    
+    // Check if we're in production (lovable preview) or development
+    const isProduction = import.meta.env.PROD;
+    if (isProduction) {
+      // Use a relative URL when in production to avoid CORS issues
+      return '/api';
+    } else {
+      return 'http://localhost:5000';
+    }
+  };
+  
+  const BACKEND_URL = getBackendUrl();
+
   // Fetch real recent files from the uploads directory
   useEffect(() => {
     const fetchRecentFiles = async () => {
       try {
-        const BACKEND_URL = import.meta.env.PROD 
-          ? (window.location.protocol + '//' + window.location.hostname + ':5000')
-          : 'http://localhost:5000';
-          
-        const response = await fetch(`${BACKEND_URL}/recent-files`);
+        const response = await fetch(`${BACKEND_URL}/recent-files`, {
+          // Add credentials to handle CORS properly
+          credentials: 'include',
+          // Add appropriate headers
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        });
         if (response.ok) {
           const data = await response.json();
           if (data.success && Array.isArray(data.files)) {
             setRecentFiles(data.files);
           }
+        } else {
+          console.error('Failed to fetch recent files. Status:', response.status);
         }
       } catch (error) {
         console.error('Failed to fetch recent files:', error);
+        // Use fallback data if fetch fails
+        setRecentFiles([
+          { name: 'Electricity Bills (Fallback)', createdDays: 3 },
+          { name: 'Invoice No 5686 (Fallback)', createdDays: 10 },
+          { name: 'Invoice No 1124 (Fallback)', createdDays: 10 }
+        ]);
       }
     };
     
     fetchRecentFiles();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, BACKEND_URL]);
   
   const handleColumnToggle = (column: string) => {
     if (selectedColumns.includes(column)) {
