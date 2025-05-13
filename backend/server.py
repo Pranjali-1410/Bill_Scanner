@@ -63,7 +63,7 @@ try:
         Stand_No TEXT,
         Street_No TEXT,
         Stand_valuation TEXT,
-        ACC_No BIGINT PRIMARY KEY,
+        ACC_No TEXT PRIMARY KEY,
         Route_No TEXT,
         Deposit TEXT,
         Guarantee TEXT,
@@ -183,7 +183,7 @@ def get_all_bills():
                 columns = [desc[0] for desc in cursor.description]
                 
                 # Convert column names to title case for better readability
-                formatted_columns = [col for col in columns]
+                formatted_columns = [col.lower() for col in columns]
                 
                 logger.info(f"Query columns: {formatted_columns}")
                 
@@ -274,7 +274,8 @@ def recent_files():
         logger.error(f"Error getting recent files: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/delete-bills', methods=['DELETE', 'OPTIONS'])
+# Updated to accept both DELETE and POST methods and handle different parameter names
+@app.route('/delete-bills', methods=['DELETE', 'POST', 'OPTIONS'])
 def delete_bills():
     if request.method == 'OPTIONS':
         # Handle preflight request
@@ -283,19 +284,22 @@ def delete_bills():
         
     try:
         data = request.get_json()
-        account_numbers = data.get('accountNumbers', [])
+        logger.info(f"Received delete request with data: {data}")
+        
+        # Accept either 'accountNumbers' or 'accounts' key for flexibility
+        account_numbers = data.get('accountNumbers', data.get('accounts', []))
         
         if not account_numbers:
             return jsonify({'error': 'No account numbers provided'}), 400
             
         logger.info(f"Deleting bills with account numbers: {account_numbers}")
+        deleted_count = 0
         
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
-                account_list = ', '.join([str(acc_no) for acc_no in account_numbers])
-                query = f"DELETE FROM bill_data WHERE ACC_No IN ({account_list})"
-                cursor.execute(query)
-                deleted_count = cursor.rowcount
+                for acc_no in account_numbers:
+                    cursor.execute("DELETE FROM bill_data WHERE ACC_No = %s", (str(acc_no),))
+                    deleted_count += cursor.rowcount
                 conn.commit()
                 
                 logger.info(f"Deleted {deleted_count} records from database")

@@ -25,6 +25,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
   const [editingRow, setEditingRow] = useState<TableData | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   
   // Define backend URL that works both in development and when deployed
@@ -109,23 +110,39 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     }
     
     try {
+      setIsDeleting(true);
+      
       // Get the ACC_No values for the selected rows to delete from database
       const selectedAccountNumbers = selectedRows.map(rowId => {
         const row = data.find(item => item.id === rowId);
         return row?.ACC_No;
       }).filter(Boolean); // Remove undefined values
       
-      // Send delete request to the backend
+      console.log("Attempting to delete account numbers:", selectedAccountNumbers);
+      
+      // Send delete request to the backend with the correct parameter name
       const response = await fetch(`${BACKEND_URL}/delete-bills`, {
-        method: 'DELETE',
+        method: 'POST', // Changed from DELETE to POST to match server implementation
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ accountNumbers: selectedAccountNumbers }),
+        body: JSON.stringify({ accounts: selectedAccountNumbers }), // Changed from accountNumbers to accounts
+        credentials: 'include'
       });
       
+      const responseText = await response.text();
+      console.log("Delete response:", responseText);
+      
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Failed to parse response as JSON:", responseText);
+        throw new Error('Invalid response from server');
+      }
+      
       if (!response.ok) {
-        throw new Error('Failed to delete from database');
+        throw new Error(responseData?.error || 'Failed to delete from database');
       }
       
       // If successful, update UI
@@ -148,9 +165,11 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       console.error('Error deleting rows:', error);
       toast({
         title: "Error",
-        description: "Failed to delete rows from database",
+        description: error instanceof Error ? error.message : "Failed to delete rows from database",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -196,7 +215,8 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
       const response = await fetch(`${BACKEND_URL}/get-all-bills`, {
-        signal: controller.signal
+        signal: controller.signal,
+        credentials: 'include'
       });
       
       clearTimeout(timeoutId);
@@ -205,43 +225,50 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
         throw new Error(`Failed to fetch data: ${response.status}`);
       }
       
-      const result = await response.json();
+      const responseText = await response.text();
+      let result;
+      
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Failed to parse response:", responseText);
+        throw new Error("Invalid response format from server");
+      }
       
       if (!result.success) {
         throw new Error(result.error || "Failed to load data");
       }
       
       // Convert backend data format to TableData format
-      // Ensure proper field name formatting from snake_case to camelCase for display
       if (result.data && Array.isArray(result.data)) {
         const formattedData = result.data.map((item: any, index: number) => {
           // Format the data to match the TableData interface
           const formattedItem: TableData = {
             id: index + 1,
-            fileName: `Bill_${item.ACC_No || index}.pdf`,
+            fileName: `Bill_${item.acc_no || index}.pdf`,
             // Map the database fields directly to our TableData interface
-            ACC_No: item.ACC_No,
-            Stand_No: item.Stand_No,
-            Street_No: item.Street_No,
-            Stand_valuation: item.Stand_valuation,
-            Route_No: item.Route_No,
-            Deposit: item.Deposit,
-            Guarantee: item.Guarantee,
-            Acc_Date: item.Acc_Date,
-            Improvements: item.Improvements,
-            Payments_up_to: item.Payments_up_to,
-            VAT_Reg_No: item.VAT_Reg_No,
-            Balance_B_F: item.Balance_B_F,
-            Payments: item.Payments,
-            Sub_total: item.Sub_total,
-            Month_total: item.Month_total,
-            Total_due: item.Total_due,
-            Over_90: item.Over_90,
-            Ninety_days: item.Ninety_days,
-            Sixty_days: item.Sixty_days,
-            Thirty_days: item.Thirty_days,
-            Current: item.Current,
-            Due_Date: item.Due_Date
+            ACC_No: item.acc_no,
+            Stand_No: item.stand_no,
+            Street_No: item.street_no,
+            Stand_valuation: item.stand_valuation,
+            Route_No: item.route_no,
+            Deposit: item.deposit,
+            Guarantee: item.guarantee,
+            Acc_Date: item.acc_date,
+            Improvements: item.improvements,
+            Payments_up_to: item.payments_up_to,
+            VAT_Reg_No: item.vat_reg_no,
+            Balance_B_F: item.balance_b_f,
+            Payments: item.payments,
+            Sub_total: item.sub_total,
+            Month_total: item.month_total,
+            Total_due: item.total_due,
+            Over_90: item.over_90,
+            Ninety_days: item.ninety_days,
+            Sixty_days: item.sixty_days,
+            Thirty_days: item.thirty_days,
+            Current: item.current,
+            Due_Date: item.due_date
           };
           
           return formattedItem;
@@ -276,6 +303,11 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
           : "Failed to load data from database. Make sure the backend is running.",
         variant: "destructive",
       });
+      
+      // Set fallback data if needed
+      if (data.length === 0) {
+        setData([]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -288,11 +320,11 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
         <div className="flex gap-4">
           <button 
             onClick={handleDeleteSelected}
-            disabled={selectedRows.length === 0}
+            disabled={selectedRows.length === 0 || isDeleting}
             className="bg-[#ea384c] text-white px-3 py-2 rounded flex items-center gap-2 disabled:opacity-50"
           >
             <Trash2 size={16} />
-            Delete All
+            {isDeleting ? "Deleting..." : "Delete Selected"}
           </button>
           
           <button 

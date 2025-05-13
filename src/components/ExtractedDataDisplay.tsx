@@ -26,6 +26,18 @@ const ExtractedDataDisplay = ({ data, onSaveToDatabase, isSaving }: ExtractedDat
     ([key]) => key !== 'First 5 Customer Rows' && key !== 'Footer Block'
   );
 
+  const handleSave = () => {
+    try {
+      onSaveToDatabase();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save to database. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="mt-8 border rounded-lg p-4">
       <h3 className="text-lg font-semibold mb-4">Extracted Document Data</h3>
@@ -49,7 +61,7 @@ const ExtractedDataDisplay = ({ data, onSaveToDatabase, isSaving }: ExtractedDat
       </div>
       <div className="mt-4">
         <Button 
-          onClick={onSaveToDatabase}
+          onClick={handleSave}
           disabled={isSaving}
           className="bg-kpmg-blue hover:bg-kpmg-blue/90 text-white"
         >
