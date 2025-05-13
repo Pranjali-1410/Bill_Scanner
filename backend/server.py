@@ -57,7 +57,7 @@ try:
     cursor = conn.cursor()
     logger.info("Database connection successful.")
     
-    # Create table if it doesn't exist
+    # Create table if it doesn't exist - now with file_name column
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS bill_data (
         Stand_No TEXT,
@@ -81,7 +81,8 @@ try:
         Sixty_days TEXT,
         Thirty_days TEXT,
         Current TEXT,
-        Due_Date TEXT
+        Due_Date TEXT,
+        file_name TEXT
     );
     """)
     
@@ -128,6 +129,9 @@ def upload_bill():
             acc_no = int(acc_no)
         except ValueError:
             return jsonify({'error': 'ACC_No must be a number'}), 400
+        
+        # Extract filename if it exists
+        file_name = data.get('file_name', f"Bill_{acc_no}.pdf")
             
         # Prepare field values for database
         fields = [
@@ -135,15 +139,16 @@ def upload_bill():
             'Deposit', 'Guarantee', 'Acc_Date', 'Improvements', 'Payments_up_to',
             'VAT_Reg_No', 'Balance_B_F', 'Payments', 'Sub_total', 'Month_total',
             'Total_due', 'Over_90', 'Ninety_days', 'Sixty_days', 'Thirty_days',
-            'Current', 'Due_Date'
+            'Current', 'Due_Date', 'file_name'
         ]
         
         # Create placeholders for SQL query
         placeholders = ', '.join(['%s'] * len(fields))
         columns = ', '.join(fields)
         
-        # Get values from the incoming data
-        values = [data.get(field) for field in fields]
+        # Get values from the incoming data, add filename at the end
+        values = [data.get(field) for field in fields[:-1]]
+        values.append(file_name)
         
         logger.info(f"Fields: {fields}")
         logger.info(f"Values: {values}")
@@ -221,7 +226,12 @@ def upload_pdf():
     file.save(file_path)
     logger.info(f"File saved at {file_path}")
 
-    return jsonify({'message': 'File uploaded successfully', 'filePath': file_path})
+    # Return filename as part of the response
+    return jsonify({
+        'message': 'File uploaded successfully', 
+        'filePath': file_path,
+        'fileName': file.filename
+    })
 
 @app.route('/scan', methods=['POST', 'OPTIONS'])
 def scan_pdf():
@@ -232,12 +242,18 @@ def scan_pdf():
         
     data = request.get_json()
     file_path = data.get('filePath')
+    file_name = data.get('fileName', os.path.basename(file_path))
 
     if not file_path or not os.path.exists(file_path):
         return jsonify({'error': 'Invalid or missing file path'}), 400
         
     logger.info(f"Scanning file: {file_path}")
     result = process_invoice(file_path)
+    
+    # Add filename to the result
+    if isinstance(result, dict):
+        result['file_name'] = file_name
+        
     return jsonify(result)
 
 @app.route('/recent-files', methods=['GET', 'OPTIONS'])

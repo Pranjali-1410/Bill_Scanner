@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Download, FileExcel, FileCsv } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -11,6 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import EditRowDialog from './EditRowDialog';
 import AddNewRowDialog from './AddNewRowDialog';
 import { TableData } from '@/types/database';
@@ -120,6 +127,10 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       
       console.log("Account numbers to delete:", selectedAccountNumbers);
       
+      if (selectedAccountNumbers.length === 0) {
+        throw new Error("No valid account numbers found for deletion");
+      }
+      
       // Send delete request to the backend
       const response = await fetch(`${BACKEND_URL}/delete-bills`, {
         method: 'DELETE',
@@ -127,6 +138,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ accountNumbers: selectedAccountNumbers }),
+        credentials: 'include'
       });
       
       const responseData = await response.json();
@@ -200,6 +212,107 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     });
   };
 
+  // Export data functions
+  const exportToCSV = () => {
+    try {
+      // Get only displayed columns for export
+      const exportData = data.map(row => {
+        const exportRow: Record<string, any> = {};
+        displayColumns.forEach(column => {
+          exportRow[column.name] = row[column.key as keyof TableData];
+        });
+        return exportRow;
+      });
+      
+      // Convert to CSV
+      const headers = displayColumns.map(col => col.name);
+      const csvContent = [
+        headers.join(','),
+        ...exportData.map(row => headers.map(header => {
+          const value = row[header];
+          // Handle values that contain commas by wrapping in quotes
+          return `"${value !== undefined && value !== null ? String(value).replace(/"/g, '""') : ''}"`; 
+        }).join(','))
+      ].join('\n');
+      
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'database_export.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        description: "Data exported to CSV successfully",
+      });
+    } catch (error) {
+      console.error('Error exporting to CSV:', error);
+      toast({
+        title: "Export Error",
+        description: "Failed to export data to CSV",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const exportToExcel = () => {
+    try {
+      // Generate Excel-compatible XML
+      const xmlContent = [
+        '<?xml version="1.0"?>',
+        '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
+        '<Worksheet ss:Name="Database">',
+        '<Table>'
+      ];
+      
+      // Add headers
+      xmlContent.push('<Row>');
+      displayColumns.forEach(column => {
+        xmlContent.push(`<Cell><Data ss:Type="String">${column.name}</Data></Cell>`);
+      });
+      xmlContent.push('</Row>');
+      
+      // Add data rows
+      data.forEach(row => {
+        xmlContent.push('<Row>');
+        displayColumns.forEach(column => {
+          const value = row[column.key as keyof TableData];
+          xmlContent.push(`<Cell><Data ss:Type="String">${value !== undefined && value !== null ? value : ''}</Data></Cell>`);
+        });
+        xmlContent.push('</Row>');
+      });
+      
+      // Close XML tags
+      xmlContent.push('</Table></Worksheet></Workbook>');
+      
+      // Create and download file
+      const blob = new Blob([xmlContent.join('')], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'database_export.xls');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        description: "Data exported to Excel successfully",
+      });
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast({
+        title: "Export Error",
+        description: "Failed to export data to Excel",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Updated function to fetch data from backend with better error handling
   const fetchDataFromBackend = async () => {
     setIsLoading(true);
@@ -209,7 +322,8 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
       const response = await fetch(`${BACKEND_URL}/get-all-bills`, {
-        signal: controller.signal
+        signal: controller.signal,
+        credentials: 'include'
       });
       
       clearTimeout(timeoutId);
@@ -228,10 +342,13 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       // Ensure proper field name formatting from snake_case to camelCase for display
       if (result.data && Array.isArray(result.data)) {
         const formattedData = result.data.map((item: any, index: number) => {
+          // Use actual filename if available, otherwise construct one from account number
+          const fileName = item.file_name || `Bill_${item.ACC_No || index}.pdf`;
+          
           // Format the data to match the TableData interface
           const formattedItem: TableData = {
             id: index + 1,
-            fileName: `Bill_${item.ACC_No || index}.pdf`,
+            fileName: fileName,
             // Map the database fields directly to our TableData interface
             ACC_No: item.ACC_No,
             Stand_No: item.Stand_No,
@@ -319,6 +436,25 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
               </>
             )}
           </button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="bg-green-600 text-white px-3 py-2 rounded flex items-center gap-2 hover:bg-green-700">
+                <Download size={16} />
+                Export
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={exportToExcel} className="flex items-center gap-2 cursor-pointer">
+                <FileExcel size={16} />
+                <span>Export to Excel</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToCSV} className="flex items-center gap-2 cursor-pointer">
+                <FileCsv size={16} />
+                <span>Export to CSV</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           
           <button 
             onClick={() => setIsAddDialogOpen(true)}
