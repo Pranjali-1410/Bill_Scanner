@@ -25,6 +25,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
   const [editingRow, setEditingRow] = useState<TableData | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   
   // Define backend URL that works both in development and when deployed
@@ -108,12 +109,16 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       return;
     }
     
+    setIsDeleting(true);
+    
     try {
       // Get the ACC_No values for the selected rows to delete from database
       const selectedAccountNumbers = selectedRows.map(rowId => {
         const row = data.find(item => item.id === rowId);
         return row?.ACC_No;
       }).filter(Boolean); // Remove undefined values
+      
+      console.log("Account numbers to delete:", selectedAccountNumbers);
       
       // Send delete request to the backend
       const response = await fetch(`${BACKEND_URL}/delete-bills`, {
@@ -124,9 +129,13 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
         body: JSON.stringify({ accountNumbers: selectedAccountNumbers }),
       });
       
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to delete from database');
+        throw new Error(responseData.error || 'Failed to delete from database');
       }
+      
+      console.log("Delete response:", responseData);
       
       // If successful, update UI
       const updatedData = data.filter(row => !selectedRows.includes(row.id));
@@ -148,9 +157,13 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       console.error('Error deleting rows:', error);
       toast({
         title: "Error",
-        description: "Failed to delete rows from database",
+        description: error instanceof Error 
+          ? error.message 
+          : "Failed to delete rows from database",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -288,11 +301,23 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
         <div className="flex gap-4">
           <button 
             onClick={handleDeleteSelected}
-            disabled={selectedRows.length === 0}
+            disabled={selectedRows.length === 0 || isDeleting}
             className="bg-[#ea384c] text-white px-3 py-2 rounded flex items-center gap-2 disabled:opacity-50"
           >
-            <Trash2 size={16} />
-            Delete All
+            {isDeleting ? (
+              <>
+                <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.24"></path>
+                  <path d="M21 3v9h-9"></path>
+                </svg>
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 size={16} />
+                Delete All
+              </>
+            )}
           </button>
           
           <button 

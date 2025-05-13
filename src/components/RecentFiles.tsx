@@ -1,5 +1,6 @@
 
 import { FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface RecentFile {
   name: string;

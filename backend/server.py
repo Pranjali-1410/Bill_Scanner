@@ -290,11 +290,17 @@ def delete_bills():
             
         logger.info(f"Deleting bills with account numbers: {account_numbers}")
         
+        # Convert any string account numbers to integers 
+        account_numbers = [int(acc_no) if isinstance(acc_no, str) else acc_no for acc_no in account_numbers]
+        
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
-                account_list = ', '.join([str(acc_no) for acc_no in account_numbers])
-                query = f"DELETE FROM bill_data WHERE ACC_No IN ({account_list})"
-                cursor.execute(query)
+                # Use parameterized query for security
+                placeholders = ', '.join(['%s'] * len(account_numbers))
+                query = f"DELETE FROM bill_data WHERE ACC_No IN ({placeholders})"
+                
+                logger.info(f"Executing delete query with account numbers: {account_numbers}")
+                cursor.execute(query, account_numbers)
                 deleted_count = cursor.rowcount
                 conn.commit()
                 
