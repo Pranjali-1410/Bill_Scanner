@@ -70,12 +70,15 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     'Due Date': 'Due_Date'
   };
 
-  const displayColumns = selectedColumns.map(col => {
-    return {
-      name: col,
-      key: columnMap[col] || col.toLowerCase().replace(/\s/g, '')
-    };
-  });
+  // Filter out 'id' from the selected columns before mapping
+  const displayColumns = selectedColumns
+    .filter(col => col !== 'id') // Remove 'id' from selected columns
+    .map(col => {
+      return {
+        name: col,
+        key: columnMap[col] || col.toLowerCase().replace(/\s/g, '')
+      };
+    });
 
   // Fetch data from backend when component mounts
   useEffect(() => {

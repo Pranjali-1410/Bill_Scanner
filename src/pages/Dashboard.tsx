@@ -26,7 +26,6 @@ const Dashboard = () => {
 
   // Available column options - expanded with Python backend fields
   const availableColumns = [
-    'id',
     'fileName',
     'billDate',
     'totalAmount',
@@ -62,11 +61,10 @@ const Dashboard = () => {
     'Due Date'
   ];
   
-  // Default selected columns with localStorage persistence
+  // Default selected columns with localStorage persistence - removed 'id'
   const [selectedColumns, setSelectedColumns] = useState<string[]>(() => {
     const savedColumns = localStorage.getItem('selectedColumns');
     return savedColumns ? JSON.parse(savedColumns) : [
-      'id',
       'fileName',
       'ACC No',
       'Stand No',
