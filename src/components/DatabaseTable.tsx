@@ -151,11 +151,20 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
         credentials: 'include'
       });
       
-      const responseData = await response.json();
-      
       if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to delete from database');
+        // Try to get error details from the response
+        let errorMessage = "Failed to delete from database";
+        try {
+          const errorResponse = await response.json();
+          errorMessage = errorResponse.error || errorMessage;
+        } catch (e) {
+          // If parsing fails, use the status text
+          errorMessage = `Failed with status: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
+      
+      const responseData = await response.json();
       
       console.log("Delete response:", responseData);
       

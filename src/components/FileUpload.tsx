@@ -142,7 +142,10 @@ const FileUpload = ({ onDataSaved }: FileUploadProps) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ filePath: uploadedFilePath }),
+        body: JSON.stringify({ 
+          filePath: uploadedFilePath,
+          fileName: selectedFile ? selectedFile.name : null 
+        }),
         signal: controller.signal
       });
       
@@ -156,6 +159,11 @@ const FileUpload = ({ onDataSaved }: FileUploadProps) => {
       
       if (!data.success) {
         throw new Error(data.error || "Scanning failed");
+      }
+      
+      // Make sure we include the original filename in extracted data
+      if (selectedFile) {
+        data.results.file_name = selectedFile.name;
       }
       
       setExtractedData(data.results);
@@ -198,7 +206,13 @@ const FileUpload = ({ onDataSaved }: FileUploadProps) => {
     setIsSaving(true);
     
     try {
-      console.log("Saving data to database:", extractedData);
+      // Make sure to include the original filename in the data we send
+      const dataToSave = {
+        ...extractedData,
+        file_name: selectedFile ? selectedFile.name : undefined
+      };
+      
+      console.log("Saving data to database:", dataToSave);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
@@ -207,7 +221,7 @@ const FileUpload = ({ onDataSaved }: FileUploadProps) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(extractedData),
+        body: JSON.stringify(dataToSave),
         signal: controller.signal
       });
       
