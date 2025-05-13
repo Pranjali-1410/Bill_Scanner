@@ -3,12 +3,12 @@ import React from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useFileUpload } from '@/contexts/FileUploadContext';
 import { saveToDatabase } from '@/services/fileService';
+import { Button } from '@/components/ui/button';
 
 interface DatabaseSaveProps {
   onDataSaved?: () => void;
 }
 
-// Changed to a React.FC type with proper return
 const DatabaseSave: React.FC<DatabaseSaveProps> = ({ onDataSaved }) => {
   const { toast } = useToast();
   const { 
@@ -74,8 +74,16 @@ const DatabaseSave: React.FC<DatabaseSaveProps> = ({ onDataSaved }) => {
     }
   };
 
-  // Return the function so it can be used by other components
-  return { handleSaveToDatabase };
+  // Return JSX for the component instead of just the function
+  return (
+    <Button 
+      onClick={handleSaveToDatabase}
+      disabled={isSaving}
+      className="bg-kpmg-blue hover:bg-kpmg-blue/90 text-white"
+    >
+      {isSaving ? "Saving..." : "Save to Database"}
+    </Button>
+  );
 };
 
 export default DatabaseSave;
