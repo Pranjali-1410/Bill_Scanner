@@ -63,22 +63,54 @@ const Dashboard = () => {
     'Due Date'
   ];
   
-  // Default selected columns
-  const [selectedColumns, setSelectedColumns] = useState([
-    'id',
-    'fileName',
-    'ACC No',
-    'Stand No',
-    'Street No',
-    'Total due',
-    'Due Date'
-  ]);
+  // Default selected columns with localStorage persistence
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(() => {
+    const savedColumns = localStorage.getItem('selectedColumns');
+    return savedColumns ? JSON.parse(savedColumns) : [
+      'id',
+      'fileName',
+      'ACC No',
+      'Stand No',
+      'Street No',
+      'Total due',
+      'Due Date'
+    ];
+  });
   
-  const recentFiles = [
+  // Save selected columns to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('selectedColumns', JSON.stringify(selectedColumns));
+  }, [selectedColumns]);
+  
+  // Fetch recent files from backend
+  const [recentFiles, setRecentFiles] = useState([
     { name: 'Electricity Bills', createdDays: 3 },
     { name: 'Invoice No 5686', createdDays: 10 },
     { name: 'Invoice No 1124', createdDays: 10 }
-  ];
+  ]);
+
+  // Fetch real recent files from the uploads directory
+  useEffect(() => {
+    const fetchRecentFiles = async () => {
+      try {
+        const BACKEND_URL = import.meta.env.PROD 
+          ? (window.location.protocol + '//' + window.location.hostname + ':5000')
+          : 'http://localhost:5000';
+          
+        const response = await fetch(`${BACKEND_URL}/recent-files`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.files)) {
+            setRecentFiles(data.files);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch recent files:', error);
+      }
+    };
+    
+    fetchRecentFiles();
+  }, [refreshTrigger]);
   
   const handleColumnToggle = (column: string) => {
     if (selectedColumns.includes(column)) {

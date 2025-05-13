@@ -6,6 +6,7 @@ import cv2, numpy as np, pytesseract, re, os
 import logging
 import psycopg2
 from contextlib import closing
+import datetime
 
 app = Flask(__name__)
 # Enable CORS for all routes and origins with additional configurations
@@ -238,6 +239,75 @@ def scan_pdf():
     logger.info(f"Scanning file: {file_path}")
     result = process_invoice(file_path)
     return jsonify(result)
+
+@app.route('/recent-files', methods=['GET', 'OPTIONS'])
+def recent_files():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = app.make_default_options_response()
+        return response
+        
+    try:
+        # Get list of files in the uploads directory
+        files = []
+        for filename in os.listdir(UPLOAD_FOLDER):
+            if os.path.isfile(os.path.join(UPLOAD_FOLDER, filename)):
+                file_path = os.path.join(UPLOAD_FOLDER, filename)
+                # Get file creation time
+                creation_time = os.path.getctime(file_path)
+                creation_date = datetime.datetime.fromtimestamp(creation_time)
+                days_old = (datetime.datetime.now() - creation_date).days
+                
+                # Add file to the list
+                files.append({
+                    'name': filename,
+                    'createdDays': days_old if days_old > 0 else 1
+                })
+                
+        # Sort files by creation date (newest first)
+        files.sort(key=lambda x: x['createdDays'])
+        
+        # Return the 10 most recent files
+        return jsonify({'success': True, 'files': files[:10]}), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting recent files: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/delete-bills', methods=['DELETE', 'OPTIONS'])
+def delete_bills():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = app.make_default_options_response()
+        return response
+        
+    try:
+        data = request.get_json()
+        account_numbers = data.get('accountNumbers', [])
+        
+        if not account_numbers:
+            return jsonify({'error': 'No account numbers provided'}), 400
+            
+        logger.info(f"Deleting bills with account numbers: {account_numbers}")
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                account_list = ', '.join([str(acc_no) for acc_no in account_numbers])
+                query = f"DELETE FROM bill_data WHERE ACC_No IN ({account_list})"
+                cursor.execute(query)
+                deleted_count = cursor.rowcount
+                conn.commit()
+                
+                logger.info(f"Deleted {deleted_count} records from database")
+                
+                return jsonify({
+                    'success': True, 
+                    'message': f'Successfully deleted {deleted_count} records'
+                }), 200
+                
+    except Exception as e:
+        logger.error(f"Error deleting bills: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("Starting Flask server on http://localhost:5000")

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Edit, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -97,7 +98,8 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     }
   };
 
-  const handleDeleteSelected = () => {
+  // Updated function to delete rows permanently from the database
+  const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
       toast({
         title: "Info",
@@ -106,21 +108,50 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       return;
     }
     
-    // Filter out selected rows
-    const updatedData = data.filter(row => !selectedRows.includes(row.id));
-    
-    // Reassign IDs to be sequential
-    const reindexedData = updatedData.map((row, index) => ({
-      ...row,
-      id: index + 1
-    }));
-    
-    setData(reindexedData);
-    setSelectedRows([]);
-    
-    toast({
-      description: `${selectedRows.length} row(s) deleted successfully`,
-    });
+    try {
+      // Get the ACC_No values for the selected rows to delete from database
+      const selectedAccountNumbers = selectedRows.map(rowId => {
+        const row = data.find(item => item.id === rowId);
+        return row?.ACC_No;
+      }).filter(Boolean); // Remove undefined values
+      
+      // Send delete request to the backend
+      const response = await fetch(`${BACKEND_URL}/delete-bills`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ accountNumbers: selectedAccountNumbers }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete from database');
+      }
+      
+      // If successful, update UI
+      const updatedData = data.filter(row => !selectedRows.includes(row.id));
+      
+      // Reassign IDs to be sequential
+      const reindexedData = updatedData.map((row, index) => ({
+        ...row,
+        id: index + 1
+      }));
+      
+      setData(reindexedData);
+      setSelectedRows([]);
+      
+      toast({
+        description: `${selectedRows.length} row(s) deleted successfully`,
+      });
+      
+    } catch (error) {
+      console.error('Error deleting rows:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete rows from database",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEditRow = (row: TableData) => {
