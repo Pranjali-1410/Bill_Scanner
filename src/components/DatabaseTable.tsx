@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Edit, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -111,6 +110,9 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     
     try {
       setIsDeleting(true);
+      toast({
+        description: `Attempting to delete ${selectedRows.length} row(s)...`,
+      });
       
       // Get the ACC_No values for the selected rows to delete from database
       const selectedAccountNumbers = selectedRows.map(rowId => {
@@ -122,26 +124,24 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       
       // Send delete request to the backend with the correct parameter name
       const response = await fetch(`${BACKEND_URL}/delete-bills`, {
-        method: 'POST', // Changed from DELETE to POST to match server implementation
+        method: 'POST', 
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ accounts: selectedAccountNumbers }), // Changed from accountNumbers to accounts
+        body: JSON.stringify({ accounts: selectedAccountNumbers }),
         credentials: 'include'
       });
       
-      const responseText = await response.text();
-      console.log("Delete response:", responseText);
-      
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        console.error("Failed to parse response as JSON:", responseText);
-        throw new Error('Invalid response from server');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Delete response error:", errorText);
+        throw new Error(`Failed to delete: ${response.status} ${errorText}`);
       }
       
-      if (!response.ok) {
+      const responseData = await response.json();
+      console.log("Delete response:", responseData);
+      
+      if (!responseData.success) {
         throw new Error(responseData?.error || 'Failed to delete from database');
       }
       
@@ -201,6 +201,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
     setData([...data, rowWithId]);
     setIsAddDialogOpen(false);
     
+    // Provide feedback to the user
     toast({
       description: "New row added successfully",
     });
@@ -239,36 +240,37 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
         throw new Error(result.error || "Failed to load data");
       }
       
-      // Convert backend data format to TableData format
+      // Convert backend data format to TableData format with improved conversion
       if (result.data && Array.isArray(result.data)) {
         const formattedData = result.data.map((item: any, index: number) => {
-          // Format the data to match the TableData interface
+          // Format the data to match the TableData interface with proper case handling
           const formattedItem: TableData = {
             id: index + 1,
             fileName: `Bill_${item.acc_no || index}.pdf`,
             // Map the database fields directly to our TableData interface
-            ACC_No: item.acc_no,
-            Stand_No: item.stand_no,
-            Street_No: item.street_no,
-            Stand_valuation: item.stand_valuation,
-            Route_No: item.route_no,
-            Deposit: item.deposit,
-            Guarantee: item.guarantee,
-            Acc_Date: item.acc_date,
-            Improvements: item.improvements,
-            Payments_up_to: item.payments_up_to,
-            VAT_Reg_No: item.vat_reg_no,
-            Balance_B_F: item.balance_b_f,
-            Payments: item.payments,
-            Sub_total: item.sub_total,
-            Month_total: item.month_total,
-            Total_due: item.total_due,
-            Over_90: item.over_90,
-            Ninety_days: item.ninety_days,
-            Sixty_days: item.sixty_days,
-            Thirty_days: item.thirty_days,
-            Current: item.current,
-            Due_Date: item.due_date
+            // Using optional chaining to handle potentially missing fields
+            ACC_No: item.acc_no ?? '',
+            Stand_No: item.stand_no ?? '',
+            Street_No: item.street_no ?? '',
+            Stand_valuation: item.stand_valuation ?? '',
+            Route_No: item.route_no ?? '',
+            Deposit: item.deposit ?? '',
+            Guarantee: item.guarantee ?? '',
+            Acc_Date: item.acc_date ?? '',
+            Improvements: item.improvements ?? '',
+            Payments_up_to: item.payments_up_to ?? '',
+            VAT_Reg_No: item.vat_reg_no ?? '',
+            Balance_B_F: item.balance_b_f ?? '',
+            Payments: item.payments ?? '',
+            Sub_total: item.sub_total ?? '',
+            Month_total: item.month_total ?? '',
+            Total_due: item.total_due ?? '',
+            Over_90: item.over_90 ?? '',
+            Ninety_days: item.ninety_days ?? '',
+            Sixty_days: item.sixty_days ?? '',
+            Thirty_days: item.thirty_days ?? '',
+            Current: item.current ?? '',
+            Due_Date: item.due_date ?? ''
           };
           
           return formattedItem;
