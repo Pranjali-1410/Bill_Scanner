@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Edit, Trash2, Download, File, Files } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import EditRowDialog from './EditRowDialog';
 import AddNewRowDialog from './AddNewRowDialog';
 import { TableData } from '@/types/database';
+import { getBackendUrl } from '@/utils/apiUtils';
 
 interface DatabaseTableProps {
   selectedColumns: string[];
@@ -34,20 +36,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   
-  // Improved backend URL determination to fix CORS issues
-  const getBackendUrl = () => {
-    if (typeof window === 'undefined') return 'http://localhost:5000';
-    
-    // Check if we're in production (lovable preview) or development
-    const isProduction = import.meta.env.PROD;
-    if (isProduction) {
-      // Use a relative URL when in production to avoid CORS issues
-      return '/api';
-    } else {
-      return 'http://localhost:5000';
-    }
-  };
-  
+  // Use the consistent backend URL from utils
   const BACKEND_URL = getBackendUrl();
 
   // Enhanced column map to include backend fields
@@ -141,15 +130,22 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
         throw new Error("No valid account numbers found for deletion");
       }
       
-      // Send delete request to the backend
+      // Create controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
+      // Send delete request to the backend with proper credentials
       const response = await fetch(`${BACKEND_URL}/delete-bills`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ accountNumbers: selectedAccountNumbers }),
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         // Try to get error details from the response
@@ -186,11 +182,23 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
       
     } catch (error) {
       console.error('Error deleting rows:', error);
+      
+      // Show a more informative error message
+      let errorMessage = "Failed to delete rows from database. ";
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage += "Request timed out after 30 seconds.";
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage += "Cannot connect to the backend server. Please check that the server is running.";
+        } else {
+          errorMessage += error.message;
+        }
+      }
+      
       toast({
-        title: "Error",
-        description: error instanceof Error 
-          ? error.message 
-          : "Failed to delete rows from database",
+        title: "Delete Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -355,6 +363,12 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
         throw new Error(`Failed to fetch data: ${response.status}`);
       }
       
+      // Check if the response is HTML instead of JSON (which would indicate a routing/server issue)
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        throw new Error('The server returned HTML instead of JSON. Backend API might be misconfigured.');
+      }
+      
       const result = await response.json();
       
       if (!result.success) {
@@ -464,6 +478,8 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({ selectedColumns }) => {
             description: "Using sample data - backend connection failed",
             variant: "default",
           });
+        } else if (error.message.includes('HTML instead of JSON')) {
+          errorMessage = "API endpoint configuration issue. The server returned HTML instead of JSON data.";
         }
       }
       
