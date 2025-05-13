@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pdf2image import convert_from_path
@@ -36,65 +35,117 @@ DB_HOST = os.getenv('DB_HOST', 'localhost')
 DB_PORT = os.getenv('DB_PORT', '5432')
 
 # Database connection function
-def get_db_connection():
+def get_db_connection(db=DB_NAME):
+    return psycopg2.connect(
+        dbname=db,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        host=DB_HOST,
+        port=DB_PORT
+    )
+
+def check_and_create_db():
     try:
-        conn = psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            host=DB_HOST,
-            port=DB_PORT
-        )
-        logger.info("Database connection successful")
-        return conn
+        conn = get_db_connection(db='postgres')
+        conn.autocommit = True
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT 1 FROM pg_database WHERE datname = %s", (DB_NAME,))
+        exists = cursor.fetchone()
+        if not exists:
+            logger.info(f"Creating database: {DB_NAME}")
+            cursor.execute(f"CREATE DATABASE {DB_NAME}")
+        cursor.close()
+        conn.close()
+
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS bill_data (
+                    Stand_No TEXT,
+                    Street_No TEXT,
+                    Stand_valuation TEXT,
+                    ACC_No TEXT PRIMARY KEY,
+                    Route_No TEXT,
+                    Deposit TEXT,
+                    Guarantee TEXT,
+                    Acc_Date TEXT,
+                    Improvements TEXT,
+                    Payments_up_to TEXT,
+                    VAT_Reg_No TEXT,
+                    Balance_B_F TEXT,
+                    Payments TEXT,
+                    Sub_total TEXT,
+                    Month_total TEXT,
+                    Total_due TEXT,
+                    Over_90 TEXT,
+                    Ninety_days TEXT,
+                    Sixty_days TEXT,
+                    Thirty_days TEXT,
+                    Current TEXT,
+                    Due_Date TEXT
+                );
+            """)
+            conn.commit()
+        conn.close()
+
     except Exception as e:
-        logger.error(f"Database connection error: {e}")
+        logger.error(f"DB Error: {e}")
         raise
 
-# Try connecting to the database
-try:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    logger.info("Database connection successful.")
-    
-    # Create table if it doesn't exist
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS bill_data (
-        Stand_No TEXT,
-        Street_No TEXT,
-        Stand_valuation TEXT,
-        ACC_No TEXT PRIMARY KEY,
-        Route_No TEXT,
-        Deposit TEXT,
-        Guarantee TEXT,
-        Acc_Date TEXT,
-        Improvements TEXT,
-        Payments_up_to TEXT,
-        VAT_Reg_No TEXT,
-        Balance_B_F TEXT,
-        Payments TEXT,
-        Sub_total TEXT,
-        Month_total TEXT,
-        Total_due TEXT,
-        Over_90 TEXT,
-        Ninety_days TEXT,
-        Sixty_days TEXT,
-        Thirty_days TEXT,
-        Current TEXT,
-        Due_Date TEXT
-    );
-    """)
-    
-    conn.commit()
-    cursor.close()
-    logger.info("Table schema updated successfully!")
-    
-    conn.close()
-    logger.info("Table schema verified successfully!")
-except Exception as e:
-    logger.error(f"Database error: {e}")
-    logger.error("Please make sure PostgreSQL is running and the 'bill_db' database exists")
+check_and_create_db()
 
+# === OCR Logic ===
+def process_invoice(pdf_path):
+    try:
+        pages = convert_from_path(pdf_path, dpi=300)
+        cv_images = [cv2.cvtColor(np.array(p), cv2.COLOR_RGB2BGR) for p in pages]
+        invoice = cv2.vconcat(cv_images)
+
+        gray = cv2.cvtColor(invoice, cv2.COLOR_BGR2GRAY)
+        gray = cv2.bilateralFilter(gray, 9, 75, 75)
+        thresh = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 10
+        )
+
+        ocr_raw = pytesseract.image_to_string(thresh, lang='eng')
+        lines = [L.strip() for L in ocr_raw.splitlines() if L.strip()]
+        full_text = re.sub(r'\s+', ' ', ocr_raw)
+
+        patterns = {
+            'Stand_No': r'Stand\s*No[:\s\-]*([A-Za-z0-9\*]+)',
+            'Street_No': r'Street\s*No.*?([A-Za-z0-9,\s]+?)\s{2,}',
+            'Stand_valuation': r'Valuation.*?(\d[\d,\.]*)',
+            'ACC_No': r'Acc\s*No.*?(\d{6,})',
+            'Route_No': r'Route\s*No.*?([A-Za-z0-9-]+)',
+            'Deposit': r'Deposit.*?(\d[\d,\.]*)',
+            'Guarantee': r'Guarantee.*?(\d[\d,\.]*)',
+            'Acc_Date': r'Acc\s*Date.*?([A-Za-z]+\s+\d{4})',
+            'Improvements': r'Improvements.*?(\d[\d,\.]*)',
+            'Payments_up_to': r'Payments\s*up to.*?([\d/]{6,10})',
+            'VAT_Reg_No': r'VAT\s*REG.*?(\d+)',
+            'Balance_B_F': r'Balance\s*B\/F.*?([-\d,\.]+)',
+            'Payments': r'Payments(?!\s*up to).*?([-\d,\.]+)',
+            'Sub_total': r'Sub\s*total.*?([-\d,\.]+)',
+            'Month_total': r'Month\s*total.*?([-\d,\.]+)',
+            'Total_due': r'Total\s*due.*?([-\d,\.]+)',
+            'Over_90': r'Over\s*90.*?([0-9,\.]+)',
+            'Ninety_days': r'90\s*Days.*?([0-9,\.]+)',
+            'Sixty_days': r'60\s*Days.*?([0-9,\.]+)',
+            'Thirty_days': r'30\s*Days.*?([0-9,\.]+)',
+            'Current': r'Current.*?([0-9,\.]+)',
+            'Due_Date': r'Due\s*Date.*?([\d\/]+)',
+        }
+
+        results = {key: (re.search(rx, full_text, re.IGNORECASE | re.DOTALL).group(1).strip()
+                         if re.search(rx, full_text, re.IGNORECASE | re.DOTALL)
+                         else None)
+                   for key, rx in patterns.items()}
+
+        return {'success': True, 'results': results}
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
 # ... keep existing code (OCR & Extraction Logic and process_invoice function)
 
 # === Routes ===
