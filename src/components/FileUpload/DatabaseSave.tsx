@@ -8,6 +8,7 @@ interface DatabaseSaveProps {
   onDataSaved?: () => void;
 }
 
+// Changed to a React.FC type with proper return
 const DatabaseSave: React.FC<DatabaseSaveProps> = ({ onDataSaved }) => {
   const { toast } = useToast();
   const { 
@@ -73,6 +74,7 @@ const DatabaseSave: React.FC<DatabaseSaveProps> = ({ onDataSaved }) => {
     }
   };
 
+  // Return the function so it can be used by other components
   return { handleSaveToDatabase };
 };
 
