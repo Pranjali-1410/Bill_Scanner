@@ -1,5 +1,5 @@
 
-# KPMG Bill Processing Application
+# Bill Processing Application
 
 This application provides OCR-based utility bill processing and storage.
 
